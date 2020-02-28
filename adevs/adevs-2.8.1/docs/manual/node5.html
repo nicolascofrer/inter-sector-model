@@ -1,0 +1,631 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2012 (1.2)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Atomic Models</TITLE>
+<META NAME="description" CONTENT="Atomic Models">
+<META NAME="keywords" CONTENT="manual">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="manual.css">
+
+<LINK REL="next" HREF="node6.html">
+<LINK REL="previous" HREF="node4.html">
+<LINK REL="up" HREF="manual.html">
+<LINK REL="next" HREF="node6.html">
+</HEAD>
+
+<BODY >
+<!--Navigation Panel-->
+<A NAME="tex2html159"
+  HREF="node6.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html155"
+  HREF="manual.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html149"
+  HREF="node4.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html157"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html160"
+  HREF="node6.html">Network Models</A>
+<B> Up:</B> <A NAME="tex2html156"
+  HREF="manual.html">A Discrete EVent system</A>
+<B> Previous:</B> <A NAME="tex2html150"
+  HREF="node4.html">Modeling and simulation with</A>
+ &nbsp; <B>  <A NAME="tex2html158"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00500000000000000000"></A>
+<A NAME="section:atomic_models"></A>
+<BR>
+Atomic Models
+</H1>
+Atomic models are the basic building blocks of a DEVS model. The behavior of an atomic model is described by its state transition functions (internal, external, and confluent), its output function, and its time advance function. Within Adevs, these aspects of an atomic model are implemented by sub-classing the <B>Atomic</B> class and implementing the virtual methods that correspond to the internal, external, and confluent transition functions, the output function, and the time advance function.
+
+<P>
+The state of an atomic model is realized by the attributes of the object that implements the model. The internal transition function describes the model's autonomous behavior; that is, how its state evolves in the absence of input. These types of events are called internal events because they are self-induced; i.e., internal to the model. The time advance function schedules these autonomous changes of state. The output function gives the model's output when these internal events occur.
+
+<P>
+The external transition function describes how the model changes state in response to input. The confluent transition function handles the simultaneous occurrence of an internal and external event. The types of objects that are accepted as input and produced as output are specified with a template argument to the <B>Atomic</B> base class.
+
+<P>
+The <B>Clerk</B> described in Section <A HREF="node4.html#chapter:intro">3</A> demonstrates all the aspects of an <B>Atomic</B> model. We'll use it here to demonstrate how an <B>Atomic</B> model generates output, processes input, and schedules internal events. Below is the <B>Clerk</B>'s class definition:
+<PRE>
+include "adevs.h"
+#include "Customer.h"
+#include &lt;list&gt;
+
+class Clerk: public adevs::Atomic&lt;IO_Type&gt; 
+{
+    public:
+        /// Constructor.
+        Clerk();
+        /// Internal transition function.
+        void delta_int();
+        /// External transition function.
+        void delta_ext(double e, const adevs::Bag&lt;IO_Type&gt;&amp; xb);
+        /// Confluent transition function.
+        void delta_conf(const adevs::Bag&lt;IO_Type&gt;&amp; xb);
+        /// Output function.  
+        void output_func(adevs::Bag&lt;IO_Type&gt;&amp; yb);
+        /// Time advance function.
+        double ta();
+        /// Output value garbage collection.
+        void gc_output(adevs::Bag&lt;IO_Type&gt;&amp; g);
+        /// Destructor.
+        ~Clerk();
+        /// Model input port.
+        static const int arrive;
+        /// Model output port.
+        static const int depart;
+
+    private:
+        /// The clerk's clock
+        double t;
+        /// List of waiting customers.
+        std::list&lt;Customer*&gt; line;
+        /// Time spent so far on the customer at the front of the line
+        double t_spent;
+};
+</PRE>
+and here its implementation
+<PRE>
+#include "Clerk.h"
+#include &lt;iostream&gt;
+using namespace std;
+using namespace adevs;
+
+// Assign locally unique identifiers to the ports
+const int Clerk::arrive = 0;
+const int Clerk::depart = 1;
+
+Clerk::Clerk():
+Atomic&lt;IO_Type&gt;(), // Initialize the parent Atomic model
+t(0.0), // Set the clock to zero
+t_spent(0.0) // No time spent on a customer so far
+{
+}
+
+void Clerk::delta_ext(double e, const Bag&lt;IO_Type&gt;&amp; xb)
+{
+    // Print a notice of the external transition
+    cout &lt;&lt; "Clerk: Computed the external transition function at t = " &lt;&lt; t+e &lt;&lt; endl;
+    // Update the clock
+    t += e;
+    // Update the time spent on the customer at the front of the line
+    if (!line.empty())
+    {
+        t_spent += e;
+    }
+    // Add the new customers to the back of the line.
+    Bag&lt;IO_Type&gt;::const_iterator i = xb.begin();
+    for (; i != xb.end(); i++)
+    {
+        // Copy the incoming Customer and place it at the back of the line.
+        line.push_back(new Customer(*((*i).value)));
+        // Record the time at which the customer entered the line.
+        line.back()-&gt;tenter = t;
+    }
+    // Summarize the model state
+    cout &lt;&lt; "Clerk: There are " &lt;&lt; line.size() &lt;&lt; " customers waiting." &lt;&lt; endl;
+    cout &lt;&lt; "Clerk: The next customer will leave at t = " &lt;&lt; t+ta() &lt;&lt; "." &lt;&lt; endl;
+}
+    
+void Clerk::delta_int()
+{
+    // Print a notice of the internal transition
+    cout &lt;&lt; "Clerk: Computed the internal transition function at t = " &lt;&lt; t+ta() &lt;&lt; endl;
+    // Update the clock
+    t += ta();
+    // Reset the spent time 
+    t_spent = 0.0;
+    // Remove the departing customer from the front of the line.
+    line.pop_front();
+    // Summarize the model state
+    cout &lt;&lt; "Clerk: There are " &lt;&lt; line.size() &lt;&lt; " customers waiting." &lt;&lt; endl;
+    cout &lt;&lt; "Clerk: The next customer will leave at t = " &lt;&lt; t+ta() &lt;&lt; "." &lt;&lt; endl;
+}
+
+void Clerk::delta_conf(const Bag&lt;IO_Type&gt;&amp; xb)
+{
+    delta_int();
+    delta_ext(0.0,xb);
+}
+
+void Clerk::output_func(Bag&lt;IO_Type&gt;&amp; yb)
+{
+    // Get the departing customer
+    Customer* leaving = line.front();
+    // Set the departure time
+    leaving-&gt;tleave = t + ta();
+    // Eject the customer 
+    IO_Type y(depart,leaving);
+    yb.insert(y);
+    // Print a notice of the departure
+    cout &lt;&lt; "Clerk: Computed the output function at t = " &lt;&lt; t+ta() &lt;&lt; endl;
+    cout &lt;&lt; "Clerk: A customer just departed!" &lt;&lt; endl;
+}
+
+double Clerk::ta()
+{
+    // If the list is empty, then next event is at inf
+    if (line.empty()) return DBL_MAX;
+    // Otherwise, return the time remaining to process the current customer
+    return line.front()-&gt;twait-t_spent;
+}
+
+void Clerk::gc_output(Bag&lt;IO_Type&gt;&amp; g)
+{
+    // Delete the outgoing customer objects
+    Bag&lt;IO_Type&gt;::iterator i;
+    for (i = g.begin(); i != g.end(); i++)
+    {
+        delete (*i).value;
+    }
+}
+
+Clerk::~Clerk()
+{
+    // Delete anything remaining in the customer queue
+    list&lt;Customer*&gt;::iterator i;
+    for (i = line.begin(); i != line.end(); i++)
+    {
+        delete *i;
+    }
+}
+</PRE>
+
+<P>
+Consider the simulation of the convenience store described in Section <A HREF="node4.html#chapter:intro">3</A> (i.e., with the arrivals listed in Table <A HREF="node4.html#tab:customer_data">3.1</A>). The arrival data is listed again here: 
+<BR><P></P>
+<DIV ALIGN="CENTER"><A NAME="527"></A>
+<TABLE>
+<CAPTION><STRONG>Table 4.1:</STRONG>
+Customer arrival times and times to process customers' orders.</CAPTION>
+<TR><TD>
+<DIV ALIGN="CENTER">
+<TABLE CELLPADDING=3 BORDER="1">
+<TR><TD ALIGN="CENTER">Enter checkout line</TD>
+<TD ALIGN="CENTER">Time to process order</TD>
+</TR>
+<TR><TD ALIGN="CENTER">1</TD>
+<TD ALIGN="CENTER">1</TD>
+</TR>
+<TR><TD ALIGN="CENTER">2</TD>
+<TD ALIGN="CENTER">4</TD>
+</TR>
+<TR><TD ALIGN="CENTER">3</TD>
+<TD ALIGN="CENTER">4</TD>
+</TR>
+<TR><TD ALIGN="CENTER">5</TD>
+<TD ALIGN="CENTER">2</TD>
+</TR>
+<TR><TD ALIGN="CENTER">7</TD>
+<TD ALIGN="CENTER">10</TD>
+</TR>
+<TR><TD ALIGN="CENTER">8</TD>
+<TD ALIGN="CENTER">20</TD>
+</TR>
+<TR><TD ALIGN="CENTER">10</TD>
+<TD ALIGN="CENTER">2</TD>
+</TR>
+<TR><TD ALIGN="CENTER">11</TD>
+<TD ALIGN="CENTER">1</TD>
+</TR>
+</TABLE>
+
+<A NAME="tab:customer_data_again"></A>
+</DIV></TD></TR>
+</TABLE>
+</DIV><P></P>
+<BR>
+
+<P>
+Table <A HREF="#tab:customer_data_again">4.1</A> describes an input sequence that is input to the <B>Clerk</B> model. The algorithm for processing this, or any other, input sequence is listed below. The <B>Atomic</B> model being simulated is called `model', t is the current simulation time (i.e., the time of the last event - internal, external, or confluent), and t_input is the time of the next unprocessed event in the input sequence.
+
+<OL>
+<LI>Set the next event time tN to the smaller of the next internal event time t_self = t + model.ta() and the next input event time t_input.
+</LI>
+<LI>If t_self = tN and t_input &lt; tN then produce an output event at time t_self by calling model.output_func() and then compute the next state by calling model.delta_int().
+</LI>
+<LI>If t_self = t_input = tN then produce an output event at time t_self by calling model.output_func() and then compute the next state by calling model.delta_conf(x) where x contains the input at time t_input.
+</LI>
+<LI>If t_self &lt; tN and t_input = tN then compute the next state by calling model.delta_ext(t_input-t,x) where x contains the input at time t_input.
+</LI>
+<LI>Set t equal to tN.
+</LI>
+<LI>Repeat if there are more input or internal events to process.
+</LI>
+</OL>
+
+<P>
+The first step of this algorithm computes the time of the next event as the sooner of the next input event and the next internal event. If the next internal event happens first, then the model produces an output and its next state is computed with the internal transition function.
+
+<P>
+If the next input event happens first, then the next state of the model is computed with the external transition function; no output is produced in this case. The elapsed time argument given to the external transition function is the amount of time that has passed since the previous event - internal, external, or confluent - at that model. 
+
+<P>
+If the next input and internal event happen at the same time, then the model produces an output and its next state is computed with the confluent transition function. The simulation clock is then advanced to the event time. These steps are repeated until there are no internal or external events remaining to process. 
+
+<P>
+The output trace resulting from the input sequence in Table <A HREF="#tab:customer_data_again">4.1</A> is shown below. It has been broken up to show where each simulation cycle begins and ends and the type of event occurring in each cycle.
+<PRE>
+-External event----------------------------------------------
+Clerk: Computed the external transition function at t = 1
+Clerk: There are 1 customers waiting.
+Clerk: The next customer will leave at t = 2.
+-Confluent event----------------------------------------------
+Clerk: Computed the output function at t = 2
+Clerk: A customer just departed!
+Clerk: Computed the internal transition function at t = 2
+Clerk: There are 0 customers waiting.
+Clerk: The next customer will leave at t = 1.79769e+308.
+Clerk: Computed the external transition function at t = 2
+Clerk: There are 1 customers waiting.
+Clerk: The next customer will leave at t = 6.
+-External event----------------------------------------------
+Clerk: Computed the external transition function at t = 3
+Clerk: There are 2 customers waiting.
+Clerk: The next customer will leave at t = 6.
+-External event----------------------------------------------
+Clerk: Computed the external transition function at t = 5
+Clerk: There are 3 customers waiting.
+Clerk: The next customer will leave at t = 6.
+-Internal event----------------------------------------------
+Clerk: Computed the output function at t = 6
+Clerk: A customer just departed!
+Clerk: Computed the internal transition function at t = 6
+Clerk: There are 2 customers waiting.
+Clerk: The next customer will leave at t = 10.
+-External event----------------------------------------------
+Clerk: Computed the external transition function at t = 7
+Clerk: There are 3 customers waiting.
+Clerk: The next customer will leave at t = 10.
+-External event----------------------------------------------
+Clerk: Computed the external transition function at t = 8
+Clerk: There are 4 customers waiting.
+Clerk: The next customer will leave at t = 10.
+-Confluent event----------------------------------------------
+Clerk: Computed the output function at t = 10
+Clerk: A customer just departed!
+Clerk: Computed the internal transition function at t = 10
+Clerk: There are 3 customers waiting.
+Clerk: The next customer will leave at t = 12.
+Clerk: Computed the external transition function at t = 10
+Clerk: There are 4 customers waiting.
+Clerk: The next customer will leave at t = 12.
+-External event----------------------------------------------
+Clerk: Computed the external transition function at t = 11
+Clerk: There are 5 customers waiting.
+Clerk: The next customer will leave at t = 12.
+-Internal event----------------------------------------------
+Clerk: Computed the output function at t = 12
+Clerk: A customer just departed!
+Clerk: Computed the internal transition function at t = 12
+Clerk: There are 4 customers waiting.
+Clerk: The next customer will leave at t = 22.
+-Internal event----------------------------------------------
+Clerk: Computed the output function at t = 22
+Clerk: A customer just departed!
+Clerk: Computed the internal transition function at t = 22
+Clerk: There are 3 customers waiting.
+Clerk: The next customer will leave at t = 42.
+-Internal Event----------------------------------------------
+Clerk: Computed the output function at t = 42
+Clerk: A customer just departed!
+Clerk: Computed the internal transition function at t = 42
+Clerk: There are 2 customers waiting.
+Clerk: The next customer will leave at t = 44.
+-Internal event----------------------------------------------
+Clerk: Computed the output function at t = 44
+Clerk: A customer just departed!
+Clerk: Computed the internal transition function at t = 44
+Clerk: There are 1 customers waiting.
+Clerk: The next customer will leave at t = 45.
+-Internal event----------------------------------------------
+Clerk: Computed the output function at t = 45
+Clerk: A customer just departed!
+Clerk: Computed the internal transition function at t = 45
+Clerk: There are 0 customers waiting.
+Clerk: The next customer will leave at t = 1.79769e+308.
+</PRE>
+
+<P>
+Now lets create a more sophisticated clerk. This clerk interrupts the checkout of a customer with a large order to more quickly serve a customer with a small order. The clerk, however, does this only occasionally. To be precise, let a small order be one requiring no more than one unit of time to process. Moreover, the clerk interrupts the processing of an order at most once in every 10 units of time.
+
+<P>
+This new clerk has two state variables. The first records the time remaining before the clerk is willing to interrupt the processing of a customer. The second is the list of customers waiting to be served. Here is the header file for the new clerk model, which is called <B>Clerk2</B>.
+<PRE>
+#include "adevs.h"
+#include "Customer.h"
+#include &lt;list&gt;
+
+class Clerk2: public adevs::Atomic&lt;IO_Type&gt; 
+{
+    public:
+        /// Constructor.
+        Clerk2();
+        /// Internal transition function.
+        void delta_int();
+        /// External transition function.
+        void delta_ext(double e, const adevs::Bag&lt;IO_Type&gt;&amp; xb);
+        /// Confluent transition function.
+        void delta_conf(const adevs::Bag&lt;IO_Type&gt;&amp; xb);
+        /// Time advance function.
+        double ta();
+        /// Output function.  
+        void output_func(adevs::Bag&lt;IO_Type&gt;&amp; yb);
+        /// Output value garbage collection.
+        void gc_output(adevs::Bag&lt;IO_Type&gt;&amp; g);
+        /// Destructor.
+        ~Clerk2();
+        /// Model input port.
+        static const int arrive;
+        /// Model output port.
+        static const int depart;
+    private:    
+        /// Structure for storing information about customers in the line
+        struct customer_info_t
+        {
+            // The customer
+            Customer* customer;
+            // Time remaining to process the customer order
+            double t_left;
+        };
+        /// List of waiting customers.
+        std::list&lt;customer_info_t&gt; line;
+        //// Time before we can preempt another customer
+        double preempt;
+        /// The clerk's clock
+        double t;
+        /// Threshold correspond to a 'small' order processing time
+        static const double SMALL_ORDER;
+        /// Minimum time between preemptions.
+        static const double PREEMPT_TIME;
+};
+</PRE>
+
+<P>
+The <B>Clerk2</B> constructor sets the clerk's clock and interruption timer to zero.
+<PRE>
+Clerk2::Clerk2():
+Atomic&lt;IO_Type&gt;(),
+preempt(0.0),
+t(0.0)
+{
+}
+</PRE>
+The output function of this model sets the exit time of the departing customer and then ejects that customer via the ``depart" port.
+<PRE>
+void Clerk2::output_func(Bag&lt;IO_Type&gt;&amp; yb)
+{
+    /// Set the exit time of the departing customer
+    line.front().customer-&gt;tleave = t+ta();
+    /// Place the customer at the front of the line onto the depart port.
+    IO_Type y(depart,line.front().customer);
+    yb.insert(y);
+    // Report the departure
+    cout &lt;&lt; "Clerk: A customer departed at t = " &lt;&lt; t+ta() &lt;&lt; endl;
+}
+</PRE>
+
+<P>
+The external transition function works as follows. When a new customer arrives, the clerk first advanced its clock by the elapsed time. Next, she reduces the time remaining to process the current customer. This reduction reflects the amount of time that has already been spent on the customer's order, which is the time elapsed since the clerk's last change of state. Then the clerk decrements the time remaining before she is willing to interrupt the processing of a large order. This timer is also decremented by the elapsed time.
+
+<P>
+Now the clerk records the time at which each arriving customer enters the line. This time is the value of the clock. If any of the arriving customers has a small checkout time and the clerk is willing to interrupt the present order, then that customer with the small order goes to the front of the line. This preempts the current customer, who now has the second place in line, and causes the preempt timer to be reset. Otherwise, the new customer simply goes to the back of the line.
+<PRE>
+void Clerk2::delta_ext(double e, const Bag&lt;IO_Type&gt;&amp; xb)
+{
+    /// Update the clock
+    t += e;
+    /// Update the time spent working on the current order
+    if (!line.empty())
+    {
+        line.front().t_left -= e;
+    }
+    /// Reduce the preempt time
+    preempt -= e;
+    /// Place new customers into the line
+    Bag&lt;IO_Type&gt;::const_iterator iter = xb.begin();
+    for (; iter != xb.end(); iter++)
+    {
+        cout &lt;&lt; "Clerk: A new customer arrived at t = " &lt;&lt; t &lt;&lt; endl;
+        /// Create a copy of the incoming customer and set the entry time
+        customer_info_t c;
+        c.customer = new Customer(*((*iter).value));
+        c.t_left = c.customer-&gt;twait;
+        /// Record the time at which the customer enters the line
+        c.customer-&gt;tenter = t;
+        /// If the customer has a small order
+        if (preempt &lt;= 0.0 &amp;&amp; c.t_left &lt;= SMALL_ORDER)
+        {
+            cout &lt;&lt; "Clerk: The new customer has preempted the current one!" &lt;&lt; endl;
+            /// We won't preempt another customer for at least this long
+            preempt = PREEMPT_TIME;
+            /// Put the new customer at the front of the line
+            line.push_front(c);
+        }
+        /// otherwise just put the customer at the end of the line
+        else 
+        {
+            cout &lt;&lt; "Clerk: The new customer is at the back of the line" &lt;&lt; endl;
+            line.push_back(c);
+        }
+    }
+}
+</PRE>
+
+<P>
+The internal transition function begins by decrementing the time remaining before the clerk will interrupt an order. The customer that just departed the store via the output function is then removed from the front of the line. If the line is empty, then there is nothing to do and the clerk sits idly behind her counter. If the line is not empty and the preemption time has expired, then the clerk scans the line for the first customer with a small order. If such a customer can be found, that customer moves to the front of the line. Then the clerk starts ringing up the first customer in her line. Here is the internal transition function for the <B>Clerk2</B> model.
+<PRE>
+void Clerk2::delta_int()
+{
+    // Update the clerk's clock
+    t += ta();
+    // Update the preemption timer
+    preempt -= ta();
+    // Remove the departing customer from the front of the line.
+    // The departing customer will be deleted later by our garbage
+    // collection method.
+    line.pop_front();
+    // Check to see if any customers are waiting.
+    if (line.empty())
+    {
+        cout &lt;&lt; "Clerk: The line is empty at t = " &lt;&lt; t &lt;&lt; endl;
+        return;
+    }
+    // If the preemption time has passed, then look for a small
+    // order that can be promoted to the front of the line.
+    list&lt;customer_info_t&gt;::iterator i;
+    for (i = line.begin(); i != line.end() &amp;&amp; preempt &lt;= 0.0; i++)
+    {
+        if ((*i).t_left &lt;= SMALL_ORDER)
+        {
+            cout &lt;&lt; "Clerk: A queued customer has a small order at time " &lt;&lt; t &lt;&lt; endl;
+            customer_info_t small_order = *i;
+            line.erase(i);
+            line.push_front(small_order);
+            preempt = PREEMPT_TIME;
+            break;
+        }
+    }
+}
+</PRE>
+
+<P>
+The time advance function returns the time remaining to process the customer at the front of the line, or infinity (i.e., DBL_MAX) if there are no customers to process.
+<PRE>
+double Clerk2::ta()
+{
+    // If the line is empty, then there is nothing to do
+    if (line.empty()) return DBL_MAX;
+    // Otherwise, wait until the first customer will leave
+    else return line.front().t_left;
+}
+</PRE>
+
+<P>
+The last function to implement is the confluent transition function. The <B>Clerk2</B> model has the same confluent transition as the <B>Clerk</B> in section <A HREF="node4.html#chapter:intro">3</A>:
+<PRE>
+void Clerk2::delta_conf(const Bag&lt;IO_Type&gt;&amp; xb)
+{
+    delta_int();
+    delta_ext(0.0,xb);
+}
+</PRE>
+
+<P>
+The behavior of the <B>Clerk2</B> model is more complex than that of the <B>Clerk</B> model. To exercise the <B>Clerk2</B>, we replace the <B>Clerk</B> model in the example from section <A HREF="node4.html#chapter:intro">3</A> with the <B>Clerk2</B> model and perform the same experiment. Here is the output trace for the <B>Clerk2</B> model in response to the input sequence shown in Table <A HREF="#tab:customer_data_again">4.1</A>. This trace was generated by the print statements shown in the source code listings for the <B>Clerk2</B> model.
+<PRE>
+Clerk: A new customer arrived at t = 1
+Clerk: The new customer has preempted the current one!
+Clerk: A customer departed at t = 2
+Clerk: The line is empty at t = 2
+Clerk: A new customer arrived at t = 2
+Clerk: The new customer is at the back of the line
+Clerk: A new customer arrived at t = 3
+Clerk: The new customer is at the back of the line
+Clerk: A new customer arrived at t = 5
+Clerk: The new customer is at the back of the line
+Clerk: A customer departed at t = 6
+Clerk: A new customer arrived at t = 7
+Clerk: The new customer is at the back of the line
+Clerk: A new customer arrived at t = 8
+Clerk: The new customer is at the back of the line
+Clerk: A customer departed at t = 10
+Clerk: A new customer arrived at t = 10
+Clerk: The new customer is at the back of the line
+Clerk: A new customer arrived at t = 11
+Clerk: The new customer has preempted the current one!
+Clerk: A customer departed at t = 12
+Clerk: A customer departed at t = 13
+Clerk: A customer departed at t = 23
+Clerk: A customer departed at t = 43
+Clerk: A customer departed at t = 45
+Clerk: The line is empty at t = 45
+</PRE>
+
+<P>
+The evolution of the <B>Clerk2</B> line is depicted in Fig. <A HREF="#fig:clerk2_line">4.1</A>. Until time 11, the line evolves just as it did with the <B>Clerk</B> model. At time 11, the <B>Clerk2</B> changes the course of the simulation by moving a customer with a small order to the front of the line.
+
+<DIV ALIGN="CENTER"><A NAME="fig:clerk2_line"></A><A NAME="579"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 4.1:</STRONG>
+The evolution of the <B>Clerk2</B> line in response to the customer arrival sequence listed in Table <A HREF="#tab:customer_data_again">4.1</A>.</CAPTION>
+<TR><TD><IMG
+ WIDTH="555" HEIGHT="706" BORDER="0"
+ SRC="img7.png"
+ ALT="\begin{figure}
+\centering
+\epsfig{file=atomic_models_figs/clerk2.eps,width=\columnwidth}
+\end{figure}"></TD></TR>
+</TABLE>
+</DIV>
+
+	<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html159"
+  HREF="node6.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html155"
+  HREF="manual.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html149"
+  HREF="node4.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html157"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html160"
+  HREF="node6.html">Network Models</A>
+<B> Up:</B> <A NAME="tex2html156"
+  HREF="manual.html">A Discrete EVent system</A>
+<B> Previous:</B> <A NAME="tex2html150"
+  HREF="node4.html">Modeling and simulation with</A>
+ &nbsp; <B>  <A NAME="tex2html158"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+<ADDRESS>
+rotten
+2014-02-19
+</ADDRESS>
+</BODY>
+</HTML>

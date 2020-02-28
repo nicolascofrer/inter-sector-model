@@ -1,0 +1,861 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2012 (1.2)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Continuous Models</TITLE>
+<META NAME="description" CONTENT="Continuous Models">
+<META NAME="keywords" CONTENT="manual">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="manual.css">
+
+<LINK REL="next" HREF="node9.html">
+<LINK REL="previous" HREF="node7.html">
+<LINK REL="up" HREF="manual.html">
+<LINK REL="next" HREF="node9.html">
+</HEAD>
+
+<BODY >
+<!--Navigation Panel-->
+<A NAME="tex2html205"
+  HREF="node9.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html201"
+  HREF="manual.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html195"
+  HREF="node7.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html203"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html206"
+  HREF="node9.html">The Simulator Class</A>
+<B> Up:</B> <A NAME="tex2html202"
+  HREF="manual.html">A Discrete EVent system</A>
+<B> Previous:</B> <A NAME="tex2html196"
+  HREF="node7.html">Variable Structure Models</A>
+ &nbsp; <B>  <A NAME="tex2html204"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html207"
+  HREF="node8.html#SECTION00810000000000000000">Differential equation modeling with the <B>ode_system</B> class</A>
+<LI><A NAME="tex2html208"
+  HREF="node8.html#SECTION00820000000000000000">Modeling hybrid systems with adevs and OpenModelica</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION00800000000000000000">
+Continuous Models</A>
+</H1>
+Many engineered systems comprise computers, communications networks, and other digital systems to monitor and control physical (electrical, mechanical, thermodynamic, etc.) processes. Models of these systems have some parts modeled as discrete event systems, other parts modeled with continuous (differential or differential-algebraic) equations, and the interaction of these parts is crucial to understanding the system's behavior.
+
+<P>
+The interaction of continuous and discrete event models is necessarily discrete. For example, a digital thermometer reports temperature in discrete increments, electrical switches are either open or closed, a threshold sensor is either tripped or it is not. Discrete interactions in a combined continuous-discrete event simulation are managed just as before: the models interact by producing output events and reacting to input events.
+
+<P>
+If, on the other hand, two systems interact continuously, then those interacting parts are modeled with continuous equations. In this case, accurate simulation is greatly facilitated by lumping the two systems into a single assembly. In Adevs this assembly is an <B>Atomic</B> model that encapsulates the system's continuous dynamics. The essence of this approach to combined simulation in Adevs consists therefore of building atomic models that i) approximate the behavior of the continuous systems and ii) generates and consumes events at the instants when the continuous system interacts with a discrete event one.
+
+<P>
+There are three possibly outcomes of this lumping process. One possibility is that we end up with a single assembly. In this case our model is essentially continuous and we are probably better off using a simulation tool for continuous systems. At the other extreme, we find that the continuous parts of our model are very simple, yielding to analytical solutions that are easily transformed into discrete event models. Between these extremes are models with continuous dynamics that are not simple but do not dominate the modeling problem. The continuous system simulation part of Adevs is aimed at this type of model.
+
+<P>
+
+<H1><A NAME="SECTION00810000000000000000">
+Differential equation modeling with the <B>ode_system</B> class</A>
+</H1>
+Models described by ordinary differential equations are implemented by sub-classing the <B>ode_system</B> class. This class has two sets of methods: the first is for the model's continuous dynamics and the second is for the model's discrete event dynamics. I'll illustrate both with the simple, if somewhat contrived, example of a cherry bomb<A NAME="tex2html22"
+  HREF="footnode.html#foot1956"><SUP>7.1</SUP></A>. This bomb is dropped from a height of 1 meter and bounces until it explodes or is doused with water. We'll assume that the cherry bomb only bounces up and down and is perfectly elastic. The cherry bomb explodes 2 seconds from the time it is lit unless doused first. Dousing the cherry bomb puts out the fuse<A NAME="tex2html23"
+  HREF="footnode.html#foot1957"><SUP>7.2</SUP></A>. Dousing is a discrete input event and the cherry bomb produces a discrete output event if it explodes. 
+
+<P>
+This model has two continuous state variables: the height and the velocity of the cherry bomb. Between events, these variables are governed by the pair of differential equations
+<P></P>
+<DIV ALIGN="CENTER"><TABLE CELLPADDING="0" WIDTH="100%" ALIGN="CENTER">
+<TR VALIGN="MIDDLE">
+<TD>&nbsp;</TD>
+<TD NOWRAP ALIGN="LEFT"><IMG
+ WIDTH="66" HEIGHT="31" ALIGN="MIDDLE" BORDER="0"
+ SRC="img25.png"
+ ALT="$\displaystyle \dot{v} = -9.8$"></TD>
+<TD NOWRAP WIDTH="10" ALIGN="RIGHT">
+<A NAME="eqn:v">(7.1)</A></TD></TR>
+<TR VALIGN="MIDDLE">
+<TD>&nbsp;</TD>
+<TD NOWRAP ALIGN="LEFT"><IMG
+ WIDTH="43" HEIGHT="38" ALIGN="MIDDLE" BORDER="0"
+ SRC="img26.png"
+ ALT="$\displaystyle \dot{h} = v$"></TD>
+<TD NOWRAP WIDTH="10" ALIGN="RIGHT">
+<A NAME="eqn:h">(7.2)</A></TD></TR>
+</TABLE></DIV>
+<BR CLEAR="ALL"><P></P>
+where <IMG
+ WIDTH="24" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img27.png"
+ ALT="$ 9.8$">
+ meters per second per second is acceleration due to gravity, <IMG
+ WIDTH="12" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img28.png"
+ ALT="$ v$">
+ is velocity, and <IMG
+ WIDTH="13" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img29.png"
+ ALT="$ h$">
+ is height. In this example, it is also useful to know the current time. We keep track of this by adding one more differential equation
+<P></P>
+<DIV ALIGN="CENTER"><A NAME="eqn:t"></A><!-- MATH
+ \begin{equation}
+\dot{t} = 1
+\end{equation}
+ -->
+<TABLE CELLPADDING="0" WIDTH="100%" ALIGN="CENTER">
+<TR VALIGN="MIDDLE">
+<TD NOWRAP ALIGN="CENTER"><IMG
+ WIDTH="39" HEIGHT="35" ALIGN="MIDDLE" BORDER="0"
+ SRC="img30.png"
+ ALT="$\displaystyle \dot{t} = 1$"></TD>
+<TD NOWRAP WIDTH="10" ALIGN="RIGHT">
+(7.3)</TD></TR>
+</TABLE></DIV>
+<BR CLEAR="ALL"><P></P>
+whose solution is <IMG
+ WIDTH="42" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img31.png"
+ ALT="$ t_0 + t$">
+ or just <IMG
+ WIDTH="10" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img32.png"
+ ALT="$ t$">
+ if we set <IMG
+ WIDTH="46" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img33.png"
+ ALT="$ t_0 = 0$">
+. The ball bounces when it hits the floor, and bouncing causes the ball's velocity to change sign. Specifically
+<P></P>
+<DIV ALIGN="CENTER"><A NAME="eqn:state_event"></A><!-- MATH
+ \begin{equation}
+h = 0 \ \& \ v < 0 \implies v \leftarrow -v
+\end{equation}
+ -->
+<TABLE CELLPADDING="0" WIDTH="100%" ALIGN="CENTER">
+<TR VALIGN="MIDDLE">
+<TD NOWRAP ALIGN="CENTER"><IMG
+ WIDTH="200" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img34.png"
+ ALT="$\displaystyle h = 0 \ \&amp; \ v &lt; 0 \implies v \leftarrow -v$"></TD>
+<TD NOWRAP WIDTH="10" ALIGN="RIGHT">
+(7.4)</TD></TR>
+</TABLE></DIV>
+<BR CLEAR="ALL"><P></P>
+where <IMG
+ WIDTH="38" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img35.png"
+ ALT="$ \implies$">
+ is logical implication and <!-- MATH
+ $\leftarrow$
+ -->
+<IMG
+ WIDTH="20" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img36.png"
+ ALT="$ \leftarrow$">
+ indicates an assignment. 
+
+<P>
+Equations <A HREF="#eqn:v">7.1</A>, <A HREF="#eqn:h">7.2</A>, and <A HREF="#eqn:t">7.3</A> are the state variable derivatives, and these equations are implemented in the <B><I>der_func</I></B> method of the <B>ode_system</B> class. The signature for this method is
+<PRE>
+void der_func(const double* q, double* dq)
+</PRE>
+The q pointer is the array of state variable values: <IMG
+ WIDTH="13" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img29.png"
+ ALT="$ h$">
+, <IMG
+ WIDTH="12" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img28.png"
+ ALT="$ v$">
+, and <IMG
+ WIDTH="10" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img32.png"
+ ALT="$ t$">
+. The dq pointer is the array of state variable derivatives: <IMG
+ WIDTH="13" HEIGHT="19" ALIGN="BOTTOM" BORDER="0"
+ SRC="img37.png"
+ ALT="$ \dot{h}$">
+, <IMG
+ WIDTH="12" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
+ SRC="img38.png"
+ ALT="$ \dot{v}$">
+, and <IMG
+ WIDTH="10" HEIGHT="20" ALIGN="BOTTOM" BORDER="0"
+ SRC="img39.png"
+ ALT="$ \dot{t}$">
+. When the simulator calls <B><I>der_func</I></B>, it supplies q. In response, the method computes the values of <IMG
+ WIDTH="13" HEIGHT="19" ALIGN="BOTTOM" BORDER="0"
+ SRC="img37.png"
+ ALT="$ \dot{h}$">
+, <IMG
+ WIDTH="12" HEIGHT="31" ALIGN="MIDDLE" BORDER="0"
+ SRC="img40.png"
+ ALT="$ \dot{q}$">
+, and <IMG
+ WIDTH="10" HEIGHT="20" ALIGN="BOTTOM" BORDER="0"
+ SRC="img39.png"
+ ALT="$ \dot{t}$">
+ and stores them in the dq array.
+
+<P>
+Equation <A HREF="#eqn:state_event">7.4</A> is a state event condition and it is implemented in two parts. The <B><I>state_event_func</I></B> method implements the `if' part (left hand side) of the condition. The signature of this method is
+<PRE>
+void state_event_func(const double *q, double *z)
+</PRE>
+Again, the supplied q array contains the current state variable values. These are used to evaluate the state event condition and store the result in the z array. The simulator detects state events by looking for changes in the sign of the z array entries. Note that the event condition should be continuous in the state variables on which it depends. In the case of the cherry bomb this is simple to do. We simply use <IMG
+ WIDTH="42" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img41.png"
+ ALT="$ z=h$">
+ if <IMG
+ WIDTH="41" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img42.png"
+ ALT="$ v &lt; 0$">
+ and <IMG
+ WIDTH="41" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img43.png"
+ ALT="$ z=1$">
+ if <IMG
+ WIDTH="54" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img44.png"
+ ALT="$ v &gt;= 0$">
+.  
+
+<P>
+The `then' part (right hand side) is implemented with the <B><I>internal_event</I></B> method, which the simulator invokes when the state event condition is true. The signature of this method is
+<PRE>
+void internal_event(double *q, const bool *state_event)
+</PRE>
+where the q array contains the value of the state variables at the event. The entries of the array state_event are true for each z in the state event condition array that evaluates to zero. This array therefore has one entry for each state event condition, and it has one additional entry to indicate time events, which are described below.
+
+<P>
+The cherry bomb has one discrete state variable with three possible values: the fuse is lit, the fuse is not lit, and the bomb is exploded. This variable changes in response to two events. The first event is when the bomb explodes. This is a time event that we know will occur 2 seconds from the time that the fuse it lit. The <B><I>time_event_func</I></B> method is used to schedule the explosion by returning the time remaining until the fuse burns out. The signature of the of this method is
+<PRE>
+double time_event_func(const double* q)
+</PRE>
+As before, the q array has the current value of the state variables. The <B><I>time_event_func</I></B> is similar to the <B><I>ta</I></B> method. It is used to schedule autonomous events based on the current value of the model's state variables. When this time expires, the simulator calls the <B><I>internal_event</I></B> method with the last flag in the state event array set to true.
+
+<P>
+The second event that can change the state of the fuse is dousing with water. This an external event. External events occur when input arrives at the model. The <B><I>external_event</I></B> method implements the response of the cherry bomb to dousing with water. Its signature is
+<PRE>
+void external_event(double *q, double e, const Bag&lt;X&gt; &amp;xb)
+</PRE>
+The array q contains the values of the continuous state variables, e is the time since the last discrete event, and xb is the bag of input. The douse event is an input and it appears in the input bag xb when and if the event occurs. 
+
+<P>
+As before, it is possible for an external and internal event to coincide. When this happens, the simulator calls the method <B><I>confluent_event</I></B>. Its signature is
+<PRE>
+void confluent_event (double *q, const bool *state_event, const Bag&lt;X&gt; &amp;xb)
+</PRE>
+and its arguments are as described for the internal and external methods.
+
+<P>
+The cherry bomb produces an output event when it explodes, and the <B><I>output_func</I></B> method is used for this purpose. Its signature is
+<PRE>
+void output_func(const double *q, const bool *state_event, Bag&lt;X&gt; &amp;yb)
+</PRE>
+The q and state_event arguments are as described for the <B><I>internal_event</I></B> method, and the bag yb is to be filled with the model's output. As with an <B>Atomic</B> model, the <B><I>output_func</I></B> is always invoked immediately prior to the <B><I>internal_event</I></B> and <B><I>confluent_event</I></B> methods.
+
+<P>
+All that remains in the implementation is the <B><I>gc_output</I></B> for collecting garbage, a constructor, and a method for initializing the continuous state variables. The <B><I>gc_output</I></B> method works identically to that of the <B>Atomic</B> class. The constructor for the cherry bomb must call the constructor of its <B>ode_system</B> base class. The signature of this method is
+<PRE>
+ode_system (int N_vars, int M_event_funcs)
+</PRE>
+where N_vars is the number of entries in the q and dq arrays (i.e., the number of continuous state variables) and M_event_funcs is the number of entries in the z and state_event arrays (plus one for the time event). For the cherry bomb, N_vars is three and M_event_funcs is one.
+
+<P>
+The constructor for the cherry bomb does not initialize the continuous state variables. Instead, the simulator calls its <B><I>init</I></B> method whose signature is
+<PRE>
+void init(double* q)
+</PRE>
+where q is an array that should be filled with the initial values for the continuous variables <IMG
+ WIDTH="13" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img29.png"
+ ALT="$ h$">
+, <IMG
+ WIDTH="12" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img28.png"
+ ALT="$ v$">
+, and <IMG
+ WIDTH="10" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img32.png"
+ ALT="$ t$">
+. The complete implementation of the <B>CherryBomb</B> is listed below.
+<PRE>
+#include "adevs.h"
+#include &lt;iostream&gt;
+using namespace std;
+using namespace adevs;
+
+// Array indices for the CherryBomb state variables
+#define H 0
+#define V 1
+#define T 2
+// Discrete variable enumeration for the CherryBomb
+typedef enum { FUSE_LIT, DOUSE, EXPLODE } Phase;
+
+class CherryBomb: public ode_system&lt;string&gt; {
+   public:
+      CherryBomb():ode_system&lt;string&gt;(
+            3, // three state variables including time
+            1 // 1 state event condition
+            ) {
+         phase = FUSE_LIT; // Light the fuse!
+      }
+      void init(double *q) {
+         q[H] = 1.0; // Initial height
+         q[V] = 0.0; // Initial velocity
+         q[T] = 0.0; // Start time at zero
+      }
+      void der_func(const double* q, double* dq) {
+         dq[V] = -9.8; 
+         dq[H] = q[V]; 
+         dq[T] = 1.0; 
+      }
+      void state_event_func(const double* q, double *z) {
+         // Test for hitting the ground. 
+         if (q[V] &lt; 0.0) z[0] = q[H];
+         else z[0] = 1.0;
+      }
+      double time_event_func(const double* q) {
+         if (q[T] &lt; 2.0) return 2.0 - q[T]; // Explode at time 2
+         else return DBL_MAX; // Don't do anything after that
+      }
+      void external_event(double* q, double e, const Bag&lt;string&gt;&amp; xb) {
+         phase = DOUSE; // Any input is a douse event
+      }
+      void internal_event(double* q, const bool* state_event) {
+         if (state_event[0]) q[V] = -q[V]; // Bounce!
+         if (state_event[1]) phase = EXPLODE;
+      }
+      void confluent_event(double* q, const bool* state_event,
+         const Bag&lt;string&gt;&amp; xb) {
+         internal_event(q,state_event);
+         external_event(q,0.0,xb);
+      }
+      void output_func(const double *q, const bool* state_event,
+            Bag&lt;string&gt;&amp; yb) {
+         if (state_event[1] &amp;&amp; phase == FUSE_LIT)
+            yb.insert("BOOM!"); // Explode!
+      }
+      void postStep(const double* q) {
+         // Write the current state to std out
+         cout &lt;&lt; q[T] &lt;&lt; " " &lt;&lt; q[H] &lt;&lt; " " &lt;&lt; q[V] &lt;&lt; " " &lt;&lt; phase &lt;&lt; endl;
+      }
+      // No garbage collection is needed
+      void gc_output(Bag&lt;string&gt;&amp;){}
+      // Get the current value of the discrete variable
+      Phase getPhase() { return phase; } 
+   private:
+      Phase phase;
+};
+</PRE>
+
+<P>
+The <B>CherryBomb</B> itself is not derived from <B>Atomic</B> and so cannot be simulated directly. Rather, it is given to a <B>Hybrid</B> object, which is a kind of <B>Atomic</B>, that generators the trajectories for the model. This <B>Hybrid</B> object is used just like any other <B>Atomic</B> model. Input to this <B>Hybrid</B> object triggers an input event for the <B>ode_system</B> that is contains. Likewise, output from the <B>ode_system</B> becomes output from the <B>Hybrid</B> object. Most importantly, the hybrid model can be part of any network of discrete event models.
+
+<P>
+A <B>Hybrid</B> object is provided with three things when it is constructed. First is the <B>ode_system</B> itself. Second is an <B>ode_solver</B> that produces the model's continuous trajectories. Adevs has two types of <B>ode_solvers</B>: a <B>corrected_euler</B> solver that uses the corrected Euler method and a <B>rk_45</B> solver that uses a fourth/fifth order Runge-Kutta method. Third is an <B>event_locator</B> that finds the location of state events as the simulation progresses. Adevs has two these: the <B>linear_event_locator</B> and <B>bisection_event_locator</B>. The code below shows how these are used to create and simulate a <B>Hybrid</B> object.
+<PRE>
+int main() {
+   // Create the model
+   CherryBomb* bomb = new CherryBomb();
+   // Create the ODE solver for this model. Maximum error
+   // tolerance at each step is 1E-4 and the maximum
+   // size of an integration step is 0.01.
+   ode_solver&lt;string&gt;* ode_solve =
+      new corrected_euler&lt;string&gt;(bomb,1E-4,0.01);
+   // Create the event locator for this model. Maximum
+   // error tolerance for the location of an event in
+   // the state space is 1E-8.
+   event_locator&lt;string&gt;* event_find =
+      new linear_event_locator&lt;string&gt;(bomb,1E-8);
+   // Create an atomic model that puts all of these
+   // together to simulate the continuous system.
+   Hybrid&lt;string&gt;* model =
+      new Hybrid&lt;string&gt;(bomb,ode_solve,event_find);
+   // Create and run a simulator for this model
+   Simulator&lt;string&gt;* sim = new Simulator&lt;string&gt;(model);
+   while (bomb-&gt;getPhase() == FUSE_LIT)
+      sim-&gt;execNextEvent();
+   delete sim; delete bomb;
+   return 0;
+}
+</PRE>
+
+<P>
+Figure <A HREF="#fig:cherry_bomb_trajectory">7.1</A> shows the cherry bomb's trajectory from <IMG
+ WIDTH="39" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img45.png"
+ ALT="$ t=0$">
+ to its explosion at <IMG
+ WIDTH="39" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img46.png"
+ ALT="$ t=2$">
+. This plot was produced using the simulation program listed above. There are two bounce events at <!-- MATH
+ $t \approx 0.45$
+ -->
+<IMG
+ WIDTH="59" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img47.png"
+ ALT="$ t \approx 0.45$">
+ and <!-- MATH
+ $t \approx 1.4$
+ -->
+<IMG
+ WIDTH="51" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img48.png"
+ ALT="$ t \approx 1.4$">
+. The cherry bomb explodes abruptly at the start of its third descent.
+
+<DIV ALIGN="CENTER"><A NAME="fig:cherry_bomb_trajectory"></A><A NAME="2049"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 7.1:</STRONG>
+A simulation of the cherry bomb model that terminates when the cherry bomb explodes.</CAPTION>
+<TR><TD><IMG
+ WIDTH="435" HEIGHT="270" BORDER="0"
+ SRC="img49.png"
+ ALT="\begin{figure}\centering
+\epsfig{file=cont_models_figs/ball_height.eps}\end{figure}"></TD></TR>
+</TABLE>
+</DIV>
+
+<P>
+
+<H1><A NAME="SECTION00820000000000000000">
+Modeling hybrid systems with adevs and OpenModelica</A>
+</H1>
+The Modelica simulation language and OpenModelica compiler can be used to automatically generate models in the form described. This has several advantages, among them are:
+
+<OL>
+<LI>You may be able to reuse large numbers of model components from the Modelica standard library.
+</LI>
+<LI>For very complicated models, the OpenModelica compiler will create code to initialize the system, sort its equations, generate solutions to algebraic sub-systems, and perform other essential tasks.
+</LI>
+<LI>Modification of the continuous model will be much simpler because the model description is separated from the problem of its simulation (the latter being handled automatically by the OpenModelica compiler and runtime system).
+</LI>
+</OL>
+
+<P>
+To take advantage of the Modelica language, you will need to get and install from source the OpenModelica compiler, which is hosted at <TT><A NAME="tex2html25"
+  HREF="http://www.openmodelica.org/">http://www.openmodelica.org/</A></TT>. Instructions for building the compiler, source code for the compiler, and other information on the Modelica language are available from the Open Modelica group and at the Modelica Associate website <TT><A NAME="tex2html26"
+  HREF="https://www.modelica.org/">https://www.modelica.org/</A></TT>. Instructions for building the adevs runtime environment for OpenModelica may be found in the README file in the top level of directory of the adevs package.
+
+<P>
+The adevs runtime environment for OpenModelica is relatively new, but aims to support most of the functionality of the standard OpenModelica runtime system with the following important caveats:
+
+<OL>
+<LI>You may only solve ordinary systems of equations in the form <!-- MATH
+ $\dot{x}=f(x,t)$
+ -->
+<IMG
+ WIDTH="78" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img50.png"
+ ALT="$ \dot{x}=f(x,t)$">
+ or semi-explicit differential-algebraic equations in the form <!-- MATH
+ $\dot{x}=f(x,y,t)$
+ -->
+<IMG
+ WIDTH="93" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img51.png"
+ ALT="$ \dot{x}=f(x,y,t)$">
+ subject to <!-- MATH
+ $g(x,y,t)=0$
+ -->
+<IMG
+ WIDTH="91" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img52.png"
+ ALT="$ g(x,y,t)=0$">
+.
+</LI>
+<LI>Many types of discrete behaviors are not supported. There is explicit support for if and when clauses, but other discrete functions (e.g., sample statements) should not be relied upon unless they appear in examples shipped with adevs.
+</LI>
+</OL>
+
+<P>
+Assuming you have a working compiler, you may generate an adevs model with the command 'omc +s +simCodeTarget=Adevs myModel.mo' where myModel.mo is the name of your Modelica model file. The adevs/examples/modelica directory has several examples of Modelica models and instructions for compiling them. One such model is shown here to demonstrate the general approach to hybrid modeling with adevs and OpenModelica. The code and makefiles for this example can be found in the adevs/examples/modelica directory.
+
+<P>
+Consider a simple circuit that consists of a voltage source connected to a resistor with its other terminal grounded (i.e., Voltage source - resistor - ground). The voltage source has a set point Vref that is controlled discretely. The equation governing the behavior of the voltage source is
+<P></P>
+<DIV ALIGN="CENTER"><!-- MATH
+ \begin{equation*}
+\dot{v} = (V_{ref} - v)^{1/3}
+\end{equation*}
+ -->
+<TABLE CELLPADDING="0" WIDTH="100%" ALIGN="CENTER">
+<TR VALIGN="MIDDLE">
+<TD NOWRAP ALIGN="CENTER"><IMG
+ WIDTH="123" HEIGHT="38" ALIGN="MIDDLE" BORDER="0"
+ SRC="img53.png"
+ ALT="$\displaystyle \dot{v} = (V_{ref} - v)^{1/3}$"></TD>
+<TD NOWRAP WIDTH="10" ALIGN="RIGHT">
+&nbsp;&nbsp;&nbsp;</TD></TR>
+</TABLE></DIV>
+<BR CLEAR="ALL"><P></P>
+and the current through the resistor is <IMG
+ WIDTH="59" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img54.png"
+ ALT="$ i = v/R$">
+. Our Modelica model has Vref as an input. The source of Vref will be a discrete event model implemented in adevs. The Modelica model 'Circuit.mo' that describes this circuit is shown below.
+<PRE>
+connector Pin
+    flow Real i;
+    Real v;
+end Pin;
+
+partial model OnePin
+    Pin T;
+end OnePin;
+
+partial model TwoPin
+    Pin T1;
+    Pin T2;
+end TwoPin;
+
+class Resistor extends TwoPin;
+    parameter Real R(start=1);
+equation
+    T1.v-T2.v = T1.i*R;
+    T1.i + T2.i = 0;
+end Resistor;
+
+class Ground extends OnePin;
+equation
+    T.v = 0;
+end Ground;
+
+class VoltageSource extends OnePin;
+    parameter Real Vref(start=0);
+equation
+    der(T.v) = 
+        if Vref &gt; T.v then (abs(Vref-T.v))^(1.0/3.0)
+        else -(abs(Vref-T.v))^(1.0/3.0);
+initial equation
+    der(T.v) = 0;
+end VoltageSource;
+
+class Circuit
+    VoltageSource V;
+    Resistor R;
+    Ground Gnd;
+equation
+    connect(V.T,R.T1);
+    connect(R.T2,Gnd.T);
+end Circuit;
+</PRE>
+
+<P>
+To compile this model, issue the command 'omc +s +simCodeTarget=Adevs Circuit.mo'. This creates a C++ class called Circuit. Two files are created that implement this class: Circuit.h and Circuit.cpp. The header file is the most informative, and an abbreviated listing is shown below.
+<PRE>
+#ifndef __omc_Circuit_h_
+#define __omc_Circuit_h_
+#include "adevs.h"
+
+/**
+ * Define the input and output type of the adevs models.
+ */
+#ifndef OMC_ADEVS_IO_TYPE
+#define OMC_ADEVS_IO_TYPE double
+#endif
+
+/**
+ * Simulation code for Circuit
+ * generated by the OpenModelica Compiler.
+ */
+class Circuit:
+    public adevs::ode_system&lt;OMC_ADEVS_IO_TYPE&gt;
+{
+    public:
+       /**
+        * Constructor. New state events can be added to the model by
+        * passing the number of new event conditions to the constructor
+        * and then extending the state_event_func method. Your state
+        * events will begin at the index returned by numStateEvents().
+        */
+       Circuit(int extra_state_events = 0);
+       /// Destructor
+       ~Circuit();
+       /// Index of the first extra state event
+       int numStateEvents() const { return 1; }
+       /**
+        * These methods are generated by the OpenModelica compiler.
+        */
+       void init(double* q);
+       void der_func(const double* q, double* dq);
+       void postStep(const double* q);
+       void state_event_func(const double* q, double* z);
+       /**
+        * These methods may be overridden by any derived class.
+        */
+       virtual void extra_state_event_funcs(double* z){}
+       double time_event_func(const double* q) { return DBL_MAX; }
+       void internal_event(double* q, const bool* state_event);
+       void external_event(double* q, double e,
+           const adevs::Bag&lt;OMC_ADEVS_IO_TYPE&gt;&amp; xb){}
+       void confluent_event(double *q, const bool* state_event,
+           const adevs::Bag&lt;OMC_ADEVS_IO_TYPE&gt;&amp; xb){}
+       void output_func(const double *q, const bool* state_event,
+           adevs::Bag&lt;OMC_ADEVS_IO_TYPE&gt;&amp; yb){}
+       void gc_output(adevs::Bag&lt;OMC_ADEVS_IO_TYPE&gt;&amp; gb){}
+       /**
+        * These methods are used to access variables and
+        * parameters in the modelica model by name.
+        */
+       double get_time() const { return timeValue; }
+       double get_$PV$PT$Pv() const { return $PV$PT$Pv; }
+       double get_$P$DER$PV$PT$Pv() const { return $P$DER$PV$PT$Pv; }
+       double get_$PGnd$PT$Pi() const { return $PGnd$PT$Pi; }
+       double get_$PR$PT2$Pv() const { return $PR$PT2$Pv; }
+       double get_$PGnd$PT$Pv() const { return $PGnd$PT$Pv; }
+       double get_$PV$PVref() const { return $PV$PVref; }
+       double get_$PR$PR() const { return $PR$PR; }
+       
+    protected:
+       /**
+        * Calculate the values of the state and algebraic variables.
+        * State variables will be initialized to q if provided,
+        * or left unchanged if not.
+        */
+       void update_vars(const double* q = NULL, bool doReinit = false);
+       /**
+         * These methods may be used to change parameters
+         * and state variables at events. Remember to call
+         * update_vars(q,true) if you change anything.
+         */
+       void set_$PV$PT$Pv(double* q, double val) { q[0] = $PV$PT$Pv=val; }
+       void set_$PV$PVref(double val) { $PV$PVref=val; }
+       void set_$PR$PR(double val) { $PR$PR=val; }
+ };
+
+ #endif
+</PRE>
+
+<P>
+This Circuit class can be used as is or (as I will soon show) be extended to add new, discrete event dynamics to it. The major features of this class are as follows:
+
+<OL>
+<LI>The constructor, which lets you add state event functions to the model.
+</LI>
+<LI>The <B><I>extra_state_event</I></B> method that lets you implement the extra state events indicated to the constructor.
+</LI>
+<LI>The <B><I>numStateEvents</I></B> method that tells you where in the event array your extra state events begin.
+</LI>
+<LI>The set and get methods, which let you read and write the continuous variables and parameters of the model.
+</LI>
+<LI>The update_vars method, which lets you reinitialize the modelica model at discrete events.
+</LI>
+<LI>The event functions (internal, external, etc.) which can be extended to add new discrete event dynamics.
+</LI>
+</OL>
+
+<P>
+For this example, the circuit class is extended to accept as input discrete changes to Vref and to produce as output the voltage when Vref is reached. These new behaviors are implemented in a derived class called CircuitExt, which adds the following:
+
+<OL>
+<LI>A state event function that triggers on v reaching Vref.
+</LI>
+<LI>An output function that generates v when the state event occurs.
+</LI>
+<LI>An external event function that changes Vref to the value received.
+</LI>
+</OL>
+The complete code listing for the derived class is shown below.
+<PRE>
+/**
+ * This class extends the Modelica Circuit model to
+ * add an output when v = Vref and to adjust Vref
+ * on receiving discrete input.
+ */
+class CircuitExt:
+	public Circuit
+{
+	public:
+		CircuitExt():
+			Circuit(1), // Add one state event to the base class
+			atVref(false) // Flag to indicate when Vref is reached
+		{
+		}
+		/**
+		 * Compute the extra state event.
+		 */
+		void extra_state_event_funcs(double* z)
+		{
+			if (!atVref)
+				z[0] = get_$PV$PT$Pv()-get_$PV$PVref();
+			else
+				z[0] = 1.0;
+		}
+		/**
+		 * Indicate that Vref has been reached when that event
+		 * occurs.
+		 */
+		void internal_event(double* q, const bool* event_flags)
+		{
+			// Apply the internal event function of the base class
+			Circuit::internal_event(q,event_flags);
+			// If this is the extra state event, then set atVref to true
+			if (event_flags[numStateEvents()]) atVref = true;
+		}
+		/**
+		 * Change Vref on receiving input.
+		 */
+		void external_event(double* q, double e, const Bag&lt;double&gt;&amp; xb)
+		{
+			// Apply the external event function of the base class
+			Circuit::external_event(q,e,xb);
+			// Set the reference voltage and indicate that we are no longer
+			// at the reference.
+			set_$PV$PVref(*(xb.begin()));
+			atVref = false;
+			// Reinitialize the continuous model. This is really only necessary
+			// if your discrete event may result in new values for the 
+			// state variables (discrete or continuous) of the modelica model.
+			update_vars(q,true);
+		}
+		void confluent_event(double* q, const bool * event_flags,
+			const Bag&lt;double&gt;&amp; xb)
+		{
+			internal_event(q,event_flags);
+			external_event(q,0.0,xb);
+		}
+		void output_func(const double* q, const bool* event_flags,
+			Bag&lt;double&gt;&amp; yb)
+		{
+			// If this was the reference being reached, then
+			// output the current value of the voltage.
+			if (event_flags[numStateEvents()])
+			{
+				yb.insert(get_$PV$PT$Pv());
+				cerr &lt;&lt; "Reached Vref=" &lt;&lt; get_$PV$PT$Pv()
+					&lt;&lt; " @ t=" &lt;&lt; get_time() &lt;&lt; endl;
+			}
+		}
+	void print_state()
+	{
+		cout &lt;&lt;
+			get_time() &lt;&lt; " " &lt;&lt; // Print the time
+			get_$PV$PT$Pv() &lt;&lt; " " &lt;&lt; // The voltage
+			get_$PGnd$PT$Pi() &lt;&lt; " " &lt;&lt; // Current through the resistor
+			endl;
+	}
+	private:
+		bool atVref;
+};
+</PRE>
+
+<P>
+The main function for a simulation of this model is shown below. The main simulation routine injects an event at <IMG
+ WIDTH="39" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img55.png"
+ ALT="$ t=1$">
+ and runs the simulation for another two seconds to <IMG
+ WIDTH="39" HEIGHT="14" ALIGN="BOTTOM" BORDER="0"
+ SRC="img56.png"
+ ALT="$ t=3$">
+. A plot of the trajectory for this model and its input and output events are shown in Fig. <A HREF="#fig:circuit">7.2</A> below.
+<PRE>
+int main()
+{
+    // Create the circuit
+    CircuitExt* model = new CircuitExt();
+    // Create an atomic model to simulate it
+    Hybrid&lt;OMC_ADEVS_IO_TYPE&gt;* hybrid_model =
+        new Hybrid&lt;OMC_ADEVS_IO_TYPE&gt;(
+        model,
+        new corrected_euler&lt;OMC_ADEVS_IO_TYPE&gt;(model,1E-5,0.01),
+        new linear_event_locator&lt;OMC_ADEVS_IO_TYPE&gt;(model,1E-5));
+    // Create the simulator
+    Simulator&lt;OMC_ADEVS_IO_TYPE&gt;* sim =
+        new Simulator&lt;OMC_ADEVS_IO_TYPE&gt;(hybrid_model);
+    model-&gt;print_state();
+    // Simulate to t = 1
+    while (sim-&gt;nextEventTime() &lt;= 1.0)
+    {
+        sim-&gt;execNextEvent();
+        model-&gt;print_state();
+    }
+    // Inject an input
+    Bag&lt;Event&lt;double&gt; &gt; input_bag;
+    input_bag.insert(Event&lt;double&gt;(hybrid_model,0.5));
+    sim-&gt;computeNextState(input_bag,1.0);
+    // Simulate from t=1 to t=5
+    while (sim-&gt;nextEventTime() &lt;= 3.0)
+    {
+        sim-&gt;execNextEvent();
+        model-&gt;print_state();
+    }
+    // Done, cleanup
+    delete sim;
+    delete hybrid_model;
+    return 0;
+}
+</PRE>
+
+<P>
+
+<DIV ALIGN="CENTER"><A NAME="fig:circuit"></A><A NAME="2083"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 7.2:</STRONG>
+A simulation of the circuit model.</CAPTION>
+<TR><TD><IMG
+ WIDTH="553" HEIGHT="390" BORDER="0"
+ SRC="img57.png"
+ ALT="\begin{figure}\centering
+\epsfig{file=cont_models_figs/circuit.eps}\end{figure}"></TD></TR>
+</TABLE>
+</DIV>
+
+	<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html205"
+  HREF="node9.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html201"
+  HREF="manual.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html195"
+  HREF="node7.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html203"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html206"
+  HREF="node9.html">The Simulator Class</A>
+<B> Up:</B> <A NAME="tex2html202"
+  HREF="manual.html">A Discrete EVent system</A>
+<B> Previous:</B> <A NAME="tex2html196"
+  HREF="node7.html">Variable Structure Models</A>
+ &nbsp; <B>  <A NAME="tex2html204"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+<ADDRESS>
+rotten
+2014-02-19
+</ADDRESS>
+</BODY>
+</HTML>

@@ -1,0 +1,262 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2012 (1.2)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Interpolation</TITLE>
+<META NAME="description" CONTENT="Interpolation">
+<META NAME="keywords" CONTENT="manual">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="manual.css">
+
+<LINK REL="next" HREF="node15.html">
+<LINK REL="previous" HREF="node13.html">
+<LINK REL="up" HREF="manual.html">
+<LINK REL="next" HREF="node15.html">
+</HEAD>
+
+<BODY >
+<!--Navigation Panel-->
+<A NAME="tex2html286"
+  HREF="node15.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html282"
+  HREF="manual.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html276"
+  HREF="node13.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html284"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html287"
+  HREF="node15.html">About this document ...</A>
+<B> Up:</B> <A NAME="tex2html283"
+  HREF="manual.html">A Discrete EVent system</A>
+<B> Previous:</B> <A NAME="tex2html277"
+  HREF="node13.html">Random Numbers</A>
+ &nbsp; <B>  <A NAME="tex2html285"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION001400000000000000000">
+Interpolation</A>
+</H1>
+Data is often made available as a set of tabulated points. Hourly temperature data, millisecond samples of voltage in an electric circuit, and the minute by minute record of a radar track are examples of continuous signals recorded at discrete points in time. But if you need temperate data every half hour, the circuit voltage a fractions of a millisecond, or radar tracks at quarter minutes then a method for approximating values between tabulated points is very useful. The <B>InterPoly</B> class exists for this purpose.
+
+<P>
+The <B>InterPoly</B> class approximates a continuous signal by fitting a polynomial to the available data points. The approximating polynomial passes through every available data point, and in many cases it provides a reasonable approximation to the original signal between the available data points. The most familiar example of an interpolating polynomial is a line that connects two data points <IMG
+ WIDTH="52" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img62.png"
+ ALT="$ (t_1,x_1)$">
+ and <IMG
+ WIDTH="52" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img63.png"
+ ALT="$ (t_2,x_2)$">
+. The connecting line is
+<P></P>
+<DIV ALIGN="CENTER"><!-- MATH
+ \begin{equation*}
+p(t)=\frac{t-t_2}{t_1-t_2}x_1 + \frac{t-t_1}{t_2-t_1}x_2
+\end{equation*}
+ -->
+<TABLE CELLPADDING="0" WIDTH="100%" ALIGN="CENTER">
+<TR VALIGN="MIDDLE">
+<TD NOWRAP ALIGN="CENTER"><IMG
+ WIDTH="201" HEIGHT="49" ALIGN="MIDDLE" BORDER="0"
+ SRC="img64.png"
+ ALT="$\displaystyle p(t)=\frac{t-t_2}{t_1-t_2}x_1 + \frac{t-t_1}{t_2-t_1}x_2$"></TD>
+<TD NOWRAP WIDTH="10" ALIGN="RIGHT">
+&nbsp;&nbsp;&nbsp;</TD></TR>
+</TABLE></DIV>
+<BR CLEAR="ALL"><P></P>
+and it is easy to check that <!-- MATH
+ $p(t_1)=x_1$
+ -->
+<IMG
+ WIDTH="75" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img65.png"
+ ALT="$ p(t_1)=x_1$">
+ and <!-- MATH
+ $p(t_2)=x_2$
+ -->
+<IMG
+ WIDTH="75" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img66.png"
+ ALT="$ p(t_2)=x_2$">
+. If more data points are available then quadratic, cubic, quartic, and even higher degree polynomials can be used to obtain (in principle) a better approximation.
+
+<P>
+An interpolating polynomial can be constructed with the <B>InterPoly</B> class in three ways. The first way is to provide the sample data to the <B>InterPoly</B> constructor
+<PRE>
+InterPoly(const double* u, const double* t, unsigned int n)
+</PRE>
+where u is the array of data values, t is the array of time points, and n is the number of points (i.e., the size of the u and t array). The constructor builds an <IMG
+ WIDTH="41" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img67.png"
+ ALT="$ n-1$">
+ degree polynomial that fits the supplied data.
+
+<P>
+The second way is to supply just the data values, a time step, the first time value, and number of data points to the constructor
+<PRE>
+InterPoly(const double* u, double dt, unsigned int n, double t0 = 0.0)
+</PRE>
+where u is the array of data values, dt is the time spacing of the data points, n is the number of data points, and t0 is the time instant of the first data point (i.e., the data point <IMG
+ WIDTH="9" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
+ SRC="img68.png"
+ ALT="$ i$">
+ is at time <!-- MATH
+ $t_0+i \cdot dt$
+ -->
+<IMG
+ WIDTH="67" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img69.png"
+ ALT="$ t_0+i \cdot dt$">
+). Both of these constructors make copies of the supplied arrays, and changes to the array values will not be reflected by the <B>InterPoly</B> object.
+
+<P>
+The third way is to assign new data point values to an existing polynomial by calling the <B>InterPoly</B> method
+<PRE>
+void setData(const double* u, const double* t = NULL)
+</PRE>
+where u is the new set of data values and the optional t array is the new set of time points. This method requires that the number of data points in u (and t if used) be equal to the number of points supplied to the <B>InterPoly</B> constructor.
+
+<P>
+There are three methods for computing interpolated values: the <B><I>interpolate</I></B> method, the overloaded <B><I>operator()</I></B>, and the <B><I>derivative</I></B> method. The method signatures are
+<PRE>
+double interpolate(double t) const
+double operator()(double t) const
+double derivative(double t) const
+</PRE>
+The <B><I>interpolate</I></B> method and <B><I>operator()</I></B> method give the value of the interpolating polynomial at the time point t. The <B><I>derivative</I></B> method gives the value of the first time derivative of the interpolating polynomial, which may be used as an approximation of the first time derivative of the original function. For example, if the data describes the position of an object through time then the <B><I>derivative</I></B> method gives an approximation of the object's velocity.
+
+<P>
+To demonstrate the <B>InterPoly</B> class and give you a sense of what the interpolating polynomials look like, I've listed below a program that computes <IMG
+ WIDTH="42" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img70.png"
+ ALT="$ \sin(t)$">
+, its time derivative <IMG
+ WIDTH="43" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img71.png"
+ ALT="$ \cos(t)$">
+, and interpolated approximations of both. Interpolating polynomials built with 4, 5, and 6 data point in the interval <IMG
+ WIDTH="45" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img3.png"
+ ALT="$ [0,2\pi ]$">
+ are illustrated in Figs. <A HREF="#fig:sin_inter">13.1</A> and <A HREF="#fig:cos_inter">13.2</A>. The quality of the approximation generally improves as more data points are added, but the function and interpolating polynomial diverge significantly outside of the interval spanned by the data points. Be careful if you extrapolate! 
+<PRE>
+#include "adevs.h"
+#include &lt;cmath&gt;
+#include &lt;iostream&gt;
+using namespace std;
+
+int main(int argc, char** argv) {
+    // Get the number of data points to use and allocate 
+    // memory for the data points arrays
+    int N = atoi(argv[1]);
+    double* t = new double[N];
+    double* u = new double[N];
+    // Compute data points using the sin function
+    for (int i = 0; i &lt; N; i++) {
+        t[i] = i*(2.0*3.14159/(N-1));
+        u[i] = sin(t[i]);
+    }
+    // Create the interpolating polynomial
+    adevs::InterPoly p(u,t,N);
+    // The data arrays can be deleted now
+    delete [] t; delete [] u;
+    // Compute several points with sin, its derivative, and the polynomial
+    // inside and a little beyond the interval spanned by the data 
+    for (double t = 0; t &lt; 2.0*3.14159+0.5; t += 0.01) 
+       cout &lt;&lt; t 
+           &lt;&lt; " " &lt;&lt; sin(t) &lt;&lt; " " &lt;&lt; p(t)
+           &lt;&lt; " " &lt;&lt; cos(t) &lt;&lt; " " &lt;&lt; p.derivative(t)
+           &lt;&lt; endl;
+    // Done
+    return 0;
+}
+</PRE>
+
+<DIV ALIGN="CENTER"><A NAME="fig:sin_inter"></A><A NAME="3122"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure:</STRONG>
+The function <IMG
+ WIDTH="42" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img70.png"
+ ALT="$ \sin(t)$">
+ and some interpolating polynomials with data spanning the interval <IMG
+ WIDTH="45" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img3.png"
+ ALT="$ [0,2\pi ]$">
+.</CAPTION>
+<TR><TD><IMG
+ WIDTH="425" HEIGHT="268" BORDER="0"
+ SRC="img72.png"
+ ALT="\begin{figure}\centering
+\epsfig{file=interpolation_figs/sin.eps}\end{figure}"></TD></TR>
+</TABLE>
+</DIV>
+
+<DIV ALIGN="CENTER"><A NAME="fig:cos_inter"></A><A NAME="3127"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure:</STRONG>
+The time derivative of <IMG
+ WIDTH="42" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img70.png"
+ ALT="$ \sin(t)$">
+ and the time derivative of some interpolating polynomials with data spanning the interval <IMG
+ WIDTH="45" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img3.png"
+ ALT="$ [0,2\pi ]$">
+.</CAPTION>
+<TR><TD><IMG
+ WIDTH="425" HEIGHT="272" BORDER="0"
+ SRC="img73.png"
+ ALT="\begin{figure}\centering
+\epsfig{file=interpolation_figs/cos.eps}\end{figure}"></TD></TR>
+</TABLE>
+</DIV>
+
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html286"
+  HREF="node15.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html282"
+  HREF="manual.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html276"
+  HREF="node13.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html284"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html287"
+  HREF="node15.html">About this document ...</A>
+<B> Up:</B> <A NAME="tex2html283"
+  HREF="manual.html">A Discrete EVent system</A>
+<B> Previous:</B> <A NAME="tex2html277"
+  HREF="node13.html">Random Numbers</A>
+ &nbsp; <B>  <A NAME="tex2html285"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+<ADDRESS>
+rotten
+2014-02-19
+</ADDRESS>
+</BODY>
+</HTML>

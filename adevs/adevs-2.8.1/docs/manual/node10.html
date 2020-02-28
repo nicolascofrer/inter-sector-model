@@ -1,0 +1,749 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2012 (1.2)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Simulation on multi-core computers</TITLE>
+<META NAME="description" CONTENT="Simulation on multi-core computers">
+<META NAME="keywords" CONTENT="manual">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="manual.css">
+
+<LINK REL="next" HREF="node11.html">
+<LINK REL="previous" HREF="node9.html">
+<LINK REL="up" HREF="manual.html">
+<LINK REL="next" HREF="node11.html">
+</HEAD>
+
+<BODY >
+<!--Navigation Panel-->
+<A NAME="tex2html231"
+  HREF="node11.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html227"
+  HREF="manual.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html221"
+  HREF="node9.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html229"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html232"
+  HREF="node11.html">Models with Many Input/Output</A>
+<B> Up:</B> <A NAME="tex2html228"
+  HREF="manual.html">A Discrete EVent system</A>
+<B> Previous:</B> <A NAME="tex2html222"
+  HREF="node9.html">The Simulator Class</A>
+ &nbsp; <B>  <A NAME="tex2html230"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html233"
+  HREF="node10.html#SECTION001010000000000000000">Limits of the parallel simulator</A>
+<LI><A NAME="tex2html234"
+  HREF="node10.html#SECTION001020000000000000000">Modifying your models to exploit lookahead</A>
+<LI><A NAME="tex2html235"
+  HREF="node10.html#SECTION001030000000000000000">Partitioning your model</A>
+<LI><A NAME="tex2html236"
+  HREF="node10.html#SECTION001040000000000000000">Partitioning and lookahead</A>
+<LI><A NAME="tex2html237"
+  HREF="node10.html#SECTION001050000000000000000">A complete example</A>
+<LI><A NAME="tex2html238"
+  HREF="node10.html#SECTION001060000000000000000">Managing memory across thread boundaries</A>
+<LI><A NAME="tex2html239"
+  HREF="node10.html#SECTION001070000000000000000">Notes on repeatability and performance</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION001000000000000000000">
+Simulation on multi-core computers</A>
+</H1>
+Adevs has a ParSimulator class that is designed specifically to take advantage of processors with multiple cores and shared memory machines with several processors. The parallel simulator is in most respects identical to the sequential simulator, and this section of the manual therefore focuses on where it is different.
+
+<P>
+The <B>ParSimulator</B> class is designed specifically for symmetric, shared memory multiprocessors (SMPs). The multi-core processors that have become ubiquitous in recent years are an important instance of this class of machines. The software technology that underlies the <B>ParSimulator</B> is OpenMP (see <TT><A NAME="tex2html28"
+  HREF="http://www.openmp.org">http://www.openmp.org</A></TT>), which is an extension of the C and C++ compilers and runtime systems to support multi-threaded computing. The OpenMP standard is now supported by most (probably all) major compilers: the GNU C++ Compiler and professional editions of Microsoft Visual Studio are important examples (important to me, that is, because those are what I use for most of my simulation work).
+
+<P>
+The critical first step, therefore, to using the <B>ParSimulator</B> is to enable the OpenMP extensions for your compiler. For the GNU C++ compiler, simply add the flag '-fopenmp' to your linker and compiler arguments. For MS Visual Studio, this is a build option. For other compilers and development environments, see your documentation. Prior to executing a simulation, the maximum number of threads that will be used by OpenMP (and, therefore, the simulator) can be set with the OMP_NUM_THREADS environment variable (this works for the GNU compilers, at least). The default in most cases is to use a number of threads equal to the number of processors or cores in your computer.
+
+<P>
+Having enabled the OpenMP options for your compiler, you are ready to start preparing your model to work with the parallel simulator. As a first step, you can do the following. This example assumes that your main simulation routine looks something like this:
+<PRE>
+...
+Simulator&lt;IO_Type&gt;* sim = new Simulator&lt;IO_Type&gt;(my_model);
+/**
+ * Register listeners with the Simulator to collect statistics
+ * ....
+ */
+while (sim-&gt;nextEventTime() &lt; t_end)
+    sim-&gt;execNextEvent();
+...
+</PRE>
+or this
+<PRE>
+...
+Simulator&lt;IO_Type&gt;* sim = new Simulator&lt;IO_Type&gt;(my_model);
+/**
+ * Register listeners with the Simulator to collect statistics
+ * ....
+ */
+sim-&gt;execUntil(t_end);
+...
+</PRE>
+which does the same thing. The reason for this assumption is described in the section on limitations. Note, however, that any Listeners you have registered with your Simulator instance will work normally (almost, I'll get to that).
+
+<P>
+Assuming you have code like the above, replace it with code like the following:
+<PRE>
+...
+ParSimulator&lt;IO_Type&gt;* sim = new ParSimulator&lt;IO_Type&gt;(my_model);
+/**
+ * Register listeners with the ParSimulator to collect statistics
+ * ....
+ */
+sim-&gt;execUntil(t_end);
+...
+</PRE>
+This should work just like your previous code with the following caveats.
+
+<P>
+First, your models must not share variables. All information exchanged between models must occur via events at their input and output. Moreover, the order of items in the bags of input received by your model may change from run to run, though the contents are guaranteed to be the same. Therefore, the repeatability of your simulation runs depends on your models being insensitive to the order of elements in their input bags.
+
+<P>
+Second, reports produced by your listeners may be formatted in ways you do not expect. For any individual atomic model, the listing of state transitions and output events will be in time order. Across models, however, this may not be the case. For example, suppose that you have two atomic models arranged as follows: A-&gt;B. You may see all state transitions and output for A listed first, followed by all state transitions and outputs for B. Most likely, these will be intermingled. Note too that the output reported for network models may not be in its proper time order, though the output reported for its atomic components will be.
+
+<P>
+The reason for these orderings is that, though the simulation of each model is done in the proper time order of its events, the ParSimulator overlaps simulation of models whenever this is possible. In the above example, it is possible to simulate model A without worrying about what B is doing because B never provides input to A. The simulator (if properly configured) will take advantage of this to simulate A and B in parallel. Hence, we may see all of the output from A before we see anything for B. Once again, however, all callbacks to registered Listeners for any particular atomic model will be in the proper time order.
+
+<P>
+Note too that this implies that callbacks to your listeners may occur in parallel. In the above example, it may be that the same listener receives concurrent notifications about a state change for model A and state change for model B, or output from A and state change of B, or any such combination. It is imperative therefore that the callbacks in your listeners be thread safe.
+
+<P>
+This implies also that your network models must have routing methods that are thread safe. This is true for the network models that are included with Adevs. If you have implemented your own network models, be sure that their <B><I>route</I></B> methods are thread safe.
+
+<P>
+Third, and most critical, your atomic components must implement the new <B><I>lookahead</I></B> method, which is inherited from the <B>Devs</B> base class. This method must return a positive value subject to the guarantees described in section <A HREF="#sect:lookahead">9.2</A>. For the purposes of getting your code to compile and run, your lookahead methods can simply return a very small value (i.e., something positive but close to zero; say 1E-8 or 1E-9). In this case, your simulator should compile and (very slowly) execute. Even if you have the patience to wait for it to complete, however, the outcome will likely be wrong. Nonetheless, such a test will determine if your build environment is setup properly.
+
+<P>
+The above changes are sufficient in most cases to make your existing, sequential simulator execute with the parallel simulator. In summary, these mandatory steps are:
+
+<OL>
+<LI>Replace your <B>Simulator</B> with a <B>ParSimulator</B>.
+</LI>
+<LI>Use the <B>ParSimulator</B>'s <B><I>execUntil</I></B> method to advance time.
+</LI>
+<LI>Make sure your <B>Listener</B>s are thread safe.
+</LI>
+<LI>Make sure your <B>Network</B> <B><I>route</I></B> methods are thread safe.
+</LI>
+<LI>Implement the <B><I>lookahead</I></B> method for your <B>Atomic</B> models.
+</LI>
+</OL>
+
+<P>
+These steps alone are unlikely to yield an improvement in performance (or, indeed, correct results). As a general rule, correctly speeding up your simulation requires giving the <B>ParSimulator</B> specific information about your model; information that only you can provide. Without this information, the synchronization overhead incurred by the parallel simulation algorithm is staggeringly huge. The majority of this document deals with the problem of creating parallel simulations that are fast and execute correctly.
+
+<P>
+
+<H1><A NAME="SECTION001010000000000000000">
+Limits of the parallel simulator</A>
+</H1>
+Before continuing any effort to make your simulator work with the algorithms used by the <B>ParSimulator</B>, you should be aware of specific capabilities of the sequential simulator that the parallel simulator does not support. These are:
+
+<OL>
+<LI>The <B><I>execNextEvent</I></B>, <B><I>computeNextState</I></B>, and <B><I>computeNextOutput</I></B> methods are not provided. Only the <B><I>execUntil</I></B> method is provided for advancing the simulation.
+</LI>
+<LI>As noted above, callbacks to a <B>Listener</B> object for each individual atomic model will be given in the proper time order, but these may be arbitrarily interleaved with the callbacks for other atomic models.
+</LI>
+<LI><B><I>Listener</I></B> callbacks must be made thread safe using the OpenMP synchronization features.
+</LI>
+<LI>The parallel simulator does not support models that change structure. If your models implement their <B><I>model_transition</I></B> method, then you cannot use the parallel simulator.
+</LI>
+</OL>
+
+<P>
+Beyond these purely technical limits, also note that making effective use of this (or any) parallel discrete event simulator is difficult. Applications of practical interest require the identification of lookahead for the model's atomic components, partitioning of the model among the available processors, and implementing code to enable the parallel simulator to take advantage of your model's lookahead and partitioning.
+
+<P>
+So while this guide addresses issues specific to using the <B>ParSimulator</B> class, I strongly recommend that, if you are not already intimately familiar with parallel simulation, that you obtain a book on the topic. ``Building Software for Simulation'', authored by James Nutaro (the author of this manual) and published by Wiley in 2010, contains a chapter on conservative discrete event simulation with DEVS in general and Adevs in particular. You may find this book to be a useful introduction, though there are other excellent texts on the subject.
+
+<P>
+
+<H1><A NAME="SECTION001020000000000000000"></A>
+<A NAME="sect:lookahead"></A>
+<BR>
+Modifying your models to exploit lookahead
+</H1>
+The <B>ParSimulator</B> takes advantage of a property intrinsic to many models: their strong causality. A model, network or atomic, is strongly causal if its output can be predicted with certainty to some future time without knowledge of its input. The length of time into the future for which this prediction can be made is called lookahead.
+
+<P>
+To illustrate, consider a very simple, atomic model that acts as a transcriber. In the absence of input, the model neither changes state nor produces output: its time advance is infinite. Upon receiving an input, the model retains it for exactly one unit of time and then expels it. So, for example, if the input to the system is the series of letters 'A', 'B', and 'C' at times 1, 2, and 3 respectively, then its output is 'A', 'B', and 'C' at times 2, 3, and 4 respectively. If the model receives an input while transcribing, then that input is discarded. So, for example, if 'A', 'B', and 'C' arrive at times 2, 2.5, and 3 then the output from the model is 'A' and 'C' at times 3 and 4.
+
+<P>
+If I know the input to this model until some time t, then I can determine its output until time t+1. Significantly, I do not need to know its input in the interval from t to t+1. For instance, suppose I know that the input at time zero is 'A'. Clearly, the only output of the model in the interval 0 to 1 (inclusive) is the value 'A' at time 1. Moreover, suppose I know that the input at t=0 is 'A' and that there is no other input until at least time 0.5. In this case, I know that the output until (but not including) time 1.5 consists only of 'A' at time 1. Any input following time 0.5 cannot occur until, at its earliest, time 1.5. This model has a lookahead of 1. Given its input to time t, its output is fixed to time t+1. Output in this interval does not depend on input in the same interval.
+
+<P>
+In network models, lookahead may accumulate. As an example, suppose that two transcribers are connected in series. In this case, the lookahead of the composite is two; i.e., the sum of the lookaheads of the components. If, however, a network model comprises two transcribers in parallel, then the lookahead of the network is only one. Generally speaking, however, larger networks tend to have larger lookaheads, and large lookahead is essential for getting good performance from the simulator.
+
+<P>
+To take advantage of lookahead in a model, the simulator must be told that it exists. This is done by overriding the lookahead method of the <B>Devs</B> class. All atomic and network models inherit this method from the <B>Devs</B> base class, and its default implementation is to return zero. 
+
+<P>
+Lookahead is most useful to the simulator if it is coupled with a capability to actually calculate the model's outputs to this time. To calculate those outputs, however, requires knowledge of the intervening states. An atomic model enables the simulator to project its output into the future by implementing two method: <B><I>beginLookahead</I></B> and <B><I>endLookahead</I></B>.
+
+<P>
+The <B><I>beginLookahead</I></B> method is called to notify the model that further calculations of its outputs and state transitions are speculative. The default behavior of the <B><I>beginLookahead</I></B> method is to throw an exception, which notifies the simulator that this model does not support projecting its output into the future. An atomic model overriding this method must be capable of restoring its state variables to the instant that <B><I>beginLookahead</I></B> was called. The <B><I>endLookahead</I></B> method is called by the simulator when it is done projecting that model's output. This method must restore the model to the same state it was in when the <B><I>beginLookahead</I></B> method was called.
+
+<P>
+These methods are demonstrated by the <B>Transcribe</B> class shown below. This atomic model implements the transcriber described above.
+<PRE>
+/**
+ * This model copies its input to its output following a
+ * delay.
+ */
+class Transcribe:
+    public adevs::Atomic&lt;char&gt;
+{
+    public:
+        Transcribe():adevs::Atomic&lt;char&gt;(),ttg(DBL_MAX),to_transcribe(' '){}
+        void delta_int() { ttg = DBL_MAX; }
+        void delta_ext(double e, const adevs::Bag&lt;char&gt;&amp; xb)
+        {
+            if (ttg == DBL_MAX)
+            {
+                ttg = 1.0;
+                // Find the largest input value
+                adevs::Bag&lt;char&gt;::const_iterator iter = xb.begin();
+                to_transcribe = *iter;
+                for (; iter != xb.end(); iter++)
+                {
+                    if (to_transcribe &lt; *iter)  to_transcribe = *iter;
+                }
+            }
+            else ttg -= e;
+        }
+        void delta_conf(const adevs::Bag&lt;char&gt;&amp; xb)
+        {
+            delta_int();
+            delta_ext(0.0,xb);
+        }
+        void output_func(adevs::Bag&lt;char&gt;&amp; yb)
+        {
+            yb.insert(to_transcribe);
+        }
+        double ta() { return ttg; }
+        void gc_output(adevs::Bag&lt;char&gt;&amp;){}
+        double lookahead() { return 1.0; }
+        void beginLookahead()
+        {
+            // Save the state
+            chkpt.ttg = ttg;
+            chkpt.to_transcribe = to_transcribe;
+        } 
+        void endLookahead()
+        {
+            // Restore the state
+            ttg = chkpt.ttg;
+            to_transcribe = chkpt.to_transcribe;
+        } 
+        char getMemory() const { return to_transcribe; }
+    private:
+        double ttg;
+        char to_transcribe;
+        struct checkpoint_t { double ttg; char to_transcribe; };
+        checkpoint_t chkpt;
+};
+</PRE>
+A model comprising two transcribers connected in series is defined as follows. 
+<PRE>
+/**
+ * This model defines a pair of transcribers connected
+ * in series as shown: -&gt; t1 -&gt; t2 -&gt;.
+ */
+class Series:
+    public adevs::Network&lt;char&gt;
+{
+    public:
+        Series():
+            Network&lt;char&gt;(),
+            t1(),t2()
+        {
+            t1.setParent(this);
+            t2.setParent(this);
+        }
+        void getComponents(adevs::Set&lt;adevs::Devs&lt;char&gt;*&gt;&amp; c)
+        {
+            c.insert(&amp;t1);
+            c.insert(&amp;t2);
+        }
+        void route(const char&amp; x, adevs::Devs&lt;char&gt;* model,
+            adevs::Bag&lt;adevs::Event&lt;char&gt; &gt;&amp; r)
+        {
+            adevs::Event&lt;char&gt; e;
+            e.value = x;
+            if (model == this) e.model = &amp;t1;
+            else if (model == &amp;t1) e.model = &amp;t2;
+            else if (model == &amp;t2) e.model = this;
+        }
+        double lookahead()
+        {
+            return t1.lookahead()+t2.lookahead();
+        }
+    private:
+        Transcribe t1, t2;
+};
+</PRE>
+
+<P>
+The above code examples illustrate all possible changes to your models - network and atomic - that might be needed to facilitate parallel simulation. Of these changes, only the <B><I>lookahead</I></B> method of the atomic model is actually required. The <B>ParSimulator</B> calculates default (and very conservative) lookaheads for the <B>Network</B> models if these are required. Atomic models that provide the <B><I>endLookahead</I></B> and <B><I>beginLookahead</I></B> methods may improve the execution time of the simulation. But only the <B><I>lookahead</I></B> values of the atomic models (or their parent if the model is partitioned by hand; see the next section) are actually required for correct execution.
+
+<P>
+
+<H1><A NAME="SECTION001030000000000000000">
+Partitioning your model</A>
+</H1>
+Each thread in your simulator is assigned to the execution of a subset of the atomic components of your model. Models within a thread are executed sequentially. This simulation proceeds just as with the sequential <B>Simulator</B> class. The threads execute in parallel, each stopping to synchronize with its neighbors only as necessary to exchange essential information.
+
+<P>
+In an ideal partitioning of the model, each thread is assigned roughly the same number of models, each model requires roughly the same amount of computational effort, and models assigned to separate threads rarely exchange inputs and outputs. This is the ideal that you should strive for in assigning your models to threads.
+
+<P>
+The actual assignment of a model to a thread is straightforward. <B>Network</B> and <B>Atomic</B> objects inherit the <B><I>setProc</I></B> method from their <B><I>Devs</I></B> base class. To assign the model to a particular thread, pass the number of that thread to the <B><I>setProc</I></B> method before the <B>ParSimulator</B> is created. Threads are numbered from 0 to the maximum number of threads (i.e., OMP_NUM_THREADS) minus one.
+
+<P>
+As the <B>ParSimulator</B> setups the simulation, it examines the thread to which each model is assigned and take the following actions:
+
+<OL>
+<LI>If the model's parent is assigned to thread k, then the model is also assigned to thread k, regardless of the argument passed to its <B><I>setProc</I></B> method.
+</LI>
+<LI>If the model's parent was not assigned to specific thread, then the model will be assigned to the thread indicated by argument to its <B><I>setProc</I></B> method.
+</LI>
+<LI>If neither the model nor its parent were assigned to a thread by calling the <B><I>setProc</I></B> method, then the model is assigned to a thread selected at random.
+</LI>
+</OL>
+
+<P>
+This partitioning of the model tells the simulator how to distribute its computational workload. It does not tell the simulator which parts of the workload communicate with each other. For example, if half of your model is assigned to thread 0 and the other half to thread 1, the simulator does not yet know if the models in 0 send input to the models in 1, vice versa, or both. Without further information, the simulator assumes that every thread contains models that must communicate with all other threads. This is the most conservative assumption, and it imposes a substantial synchronization overhead.
+
+<P>
+If you know something about how the models assigned to the threads communicate, then you can provide this information to the simulator. This is done by passing a <B>LpGraph</B> object to the constructor of the <B>ParSimulator</B>. The <B>LpGraph</B> is a directed graph and the presence of an edge from node k to node j indicates that the models in thread k send input to the models in thread j. Absence of an edge indicates no flow of information along the missing edge. An edge is added to the <B>LpGraph</B> by calling its <B><I>addEdge(A,B)</I></B> method. This creates an edge from thread A to thread B.
+
+<P>
+The following snippet of code illustrates the partitioning procedure. This segment of code creates the block diagram model shown in Fig. <A HREF="#fig:partition_example">9.1</A>. This model consists of two atomic components, A and B, and a network with two components C1 and C2. The model A is assigned to thread 0, B to thread 1, and the network C with its components C1 and C2 to thread 2. With this partition, thread 0 sends input to thread 1, thread 1 sends input to thread 2, and thread 2 to thread 0. 
+<PRE>
+ModelA* A = new ModelA();
+ModelB* B = new ModelB();
+NetworkModelC* C = new NetworkModelC();
+SimpleDigraph&lt;IO_Type&gt;* model = new SimpleDigraph&lt;IO_Type&gt;();
+model.add(A);
+model.add(C);
+model.add(B);
+model.couple(A,B);
+model.couple(B,C);
+model.couple(C,A);
+A.setProc(0);
+B.setProc(1);
+C.setProc(2);
+LpGraph lpg;
+lpg.addEdge(0,1);
+lpg.addEdge(1,2);
+lpg.addEdge(2,3);
+ParSimulator&lt;IO_Type&gt; sim(model,lpg);
+</PRE>
+
+<DIV ALIGN="CENTER"><A NAME="fig:partition_example"></A><A NAME="2552"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 9.1:</STRONG>
+Partitioning a model for simulation on three processors.</CAPTION>
+<TR><TD><IMG
+ WIDTH="547" HEIGHT="286" BORDER="0"
+ SRC="img60.png"
+ ALT="\begin{figure}\centering
+\epsfig{file=parsim_figs/partition_example.eps}\end{figure}"></TD></TR>
+</TABLE>
+</DIV>
+
+<P>
+
+<H1><A NAME="SECTION001040000000000000000">
+Partitioning and lookahead</A>
+</H1>
+In a large model with an explicit partitioning, it is not required that every model provide a lookahead value. The following rules dictate which models must provide positive lookahead.
+
+<OL>
+<LI>An atomic model whose parent is not assigned to a specific thread must provide a positive lookahead.
+</LI>
+<LI>A network that is assigned to a specific thread, but whose parent is not, must provide a positive lookahead. 
+</LI>
+<LI>No other model is required to provide a positive lookahead, or indeed any lookahead at all. The simulator will not use lookahead values provided by models except as indicated in cases 1 and 2 above.
+</LI>
+</OL>
+
+<P>
+
+<H1><A NAME="SECTION001050000000000000000">
+A complete example</A>
+</H1>
+This example builds and simulates the network shown in Fig. <A HREF="#fig:partition_example">9.1</A> using the <B>Transcribe model</B> for components B, C1, and C2 and a <B>SimpleDigraph</B> for the network C. The network that is component A has two sub-components: a generator and a transcriber. Input to the network goes to the generator. Output from the generator goes to the transcriber, and output from the transcriber becomes an output from the network. 
+
+<P>
+The generator operates as follows. It produces output at regular intervals of 1/2 units of time until it receives an input. At that time it stops. Note that the lookahead of the generator is zero because its pending output may be canceled at any time. The lookahead of the network, however, is one. That is, the lookahead of the network is the sum of its series components. 
+
+<P>
+A <B>Listener</B> is constructed for this model to record the state and output trajectories of every component. This listener is made thread safe by the critical section placed around writes to standard output. It reports state and output trajectories for each atomic model in proper time order, but interleaves the trajectories of these models with each other. 
+
+<P>
+The complete implementation of the model, listener, and simulator are shown below.
+<PRE>
+#include "Transcribe.h"
+#include "Genr.h"
+#include "adevs.h"
+#include &lt;iostream&gt;
+using namespace adevs;
+using namespace std;
+
+/**
+ * Extend the SimpleDigraph class to allow its lookahead
+ * to be set manually.
+ */
+class SimpleDigraphWithLookahead:
+    public SimpleDigraph&lt;char&gt;
+{
+    public:
+        SimpleDigraphWithLookahead():
+            SimpleDigraph&lt;char&gt;(),
+            look_ahead(0.0)
+            {
+            }
+        void setLookahead(double look_ahead)
+        {
+            this-&gt;look_ahead = look_ahead;
+        }
+        double lookahead() { return look_ahead; }
+    private:
+        double look_ahead;
+};
+
+/**
+ * Listener to record the output and state trajectories of the
+ * component models.
+ */
+Genr* A_g;
+Transcribe *A_t, *B, *C1, *C2;
+SimpleDigraphWithLookahead *A, *C;
+
+class Listener:
+    public EventListener&lt;char&gt;
+{
+    public:
+        Listener(){}
+        void outputEvent(Event&lt;char&gt; y, double t)
+        {
+            string which = which_model(y.model);
+            #pragma omp critical
+            cout &lt;&lt; which &lt;&lt; " @ t = " &lt;&lt; t &lt;&lt; ", y(t)= " &lt;&lt; y.value &lt;&lt; endl;  
+        }
+        void stateChange(Atomic&lt;char&gt;* model, double t)
+        {
+            if (model == A_g)
+                #pragma omp critical
+                cout &lt;&lt; which_model(A_g) &lt;&lt; " @ t = " &lt;&lt; t &lt;&lt; ", running= "
+                    &lt;&lt; A_g-&gt;isRunning() &lt;&lt; ", next output= " &lt;&lt;
+                    A_g-&gt;getNextOutput() &lt;&lt; endl;
+            else if (model == A_t)
+                #pragma omp critical
+                cout &lt;&lt; which_model(A_t) &lt;&lt; " @ t = " &lt;&lt; t &lt;&lt; ", memory= "
+                    &lt;&lt; A_t-&gt;getMemory() &lt;&lt; ", ta()= " &lt;&lt;
+                    A_t-&gt;ta() &lt;&lt; endl;
+            else if (model == C1)
+                #pragma omp critical
+                cout &lt;&lt; which_model(C1) &lt;&lt; " @ t = " &lt;&lt; t &lt;&lt; ", memory= "
+                    &lt;&lt; C1-&gt;getMemory() &lt;&lt; ", ta()= " &lt;&lt;
+                    C1-&gt;ta() &lt;&lt; endl;
+            else if (model == C2)
+                #pragma omp critical
+                cout &lt;&lt; which_model(C2) &lt;&lt; " @ t = " &lt;&lt; t &lt;&lt; ", memory= "
+                    &lt;&lt; C2-&gt;getMemory() &lt;&lt; ", ta()= " &lt;&lt;
+                    C2-&gt;ta() &lt;&lt; endl;
+            else if (model == B)
+                #pragma omp critical
+                cout &lt;&lt; which_model(B) &lt;&lt; " @ t = " &lt;&lt; t &lt;&lt; ", memory= "
+                    &lt;&lt; B-&gt;getMemory() &lt;&lt; ", ta()= " &lt;&lt;
+                    B-&gt;ta() &lt;&lt; endl;
+            else assert(false);
+        }
+    private:
+        string which_model(Devs&lt;char&gt;* model)
+        {
+            if (model == A_g) return "A.A_g";
+            if (model == A_t) return "A.A_t";
+            if (model == A) return "A";
+            if (model == B) return "B";
+            if (model == C1) return "C.C1";
+            if (model == C2) return "C.C2";
+            if (model == C) return "C";
+            assert(false);
+            return "";
+        }
+};
+
+int main(int argc, char** argv)
+{
+    // Component A
+    A_g = new Genr();
+    A_t = new Transcribe();
+    A = new SimpleDigraphWithLookahead();
+    A-&gt;setLookahead(A_t-&gt;lookahead()+A_g-&gt;lookahead());
+    A-&gt;add(A_g);
+    A-&gt;add(A_t);
+    A-&gt;couple(A,A_g); // A -&gt; A_g
+    A-&gt;couple(A_g,A_t); // A_g -&gt; A_t
+    A-&gt;couple(A_t,A); // A_t -&gt; A
+    A-&gt;setProc(0); // Assign to thread zero
+    // Component B
+    B = new Transcribe();
+    B-&gt;setProc(1); // Assign to thread one
+    // Component C
+    C1 = new Transcribe();
+    C2 = new Transcribe();
+    C = new SimpleDigraphWithLookahead();
+    C-&gt;setLookahead(C1-&gt;lookahead()+C2-&gt;lookahead());
+    C-&gt;add(C1);
+    C-&gt;add(C2);
+    C-&gt;couple(C,C1); // C -&gt; C1
+    C-&gt;couple(C2,C); // C2 -&gt; C
+    C-&gt;couple(C1,C2); // C1 -&gt; C2
+    C-&gt;couple(C2,C1); // C2 -&gt; C1
+    C-&gt;setProc(2); // Assign to thread two
+    // Create the overarching model
+    SimpleDigraph&lt;char&gt;* model  = new SimpleDigraph&lt;char&gt;();
+    model-&gt;add(A);
+    model-&gt;add(B);
+    model-&gt;add(C);
+    model-&gt;couple(A,B);
+    model-&gt;couple(B,C);
+    model-&gt;couple(C,A);
+    // Create the corresponding LPGraph
+    LpGraph lpg;
+    lpg.addEdge(0,1);
+    lpg.addEdge(1,2);
+    lpg.addEdge(2,0);
+    // Create the simulator
+    ParSimulator&lt;char&gt;* sim = new ParSimulator&lt;char&gt;(model,lpg);
+    // Register the listener
+    Listener* listener = new Listener();
+    sim-&gt;addEventListener(listener);
+    // Run the simulation until t=10
+    sim-&gt;execUntil(10.0);
+    // Cleanup and exit
+    delete sim;
+    delete listener;
+    delete model;
+    return 0;
+}
+</PRE>
+
+<P>
+A subset of the output produced by this simulation is shown below. The intermingling of reported events in time is immediately apparent.
+<PRE>
+...
+C.C2 @ t = 7.5, y(t)= G
+C @ t = 7.5, y(t)= G
+C.C1 @ t = 7.5, y(t)= I
+C.C2 @ t = 7.5, memory= I, ta()= 1
+C.C1 @ t = 7.5, memory= G, ta()= 1
+C.C1 @ t = 8.5, y(t)= G
+C.C2 @ t = 8.5, y(t)= I
+C @ t = 8.5, y(t)= I
+C.C1 @ t = 8.5, memory= I, ta()= 1
+C.C2 @ t = 8.5, memory= G, ta()= 1
+A.A_g @ t = 7.5, running= 0, next output= I
+A.A_g @ t = 8.5, running= 0, next output= I
+A.A_g @ t = 9.5, running= 0, next output= I
+C.C1 @ t = 9.5, y(t)= I
+C.C2 @ t = 9.5, y(t)= G
+C @ t = 9.5, y(t)= G
+C.C1 @ t = 9.5, memory= G, ta()= 1
+C.C2 @ t = 9.5, memory= I, ta()= 1
+...
+</PRE>
+
+<P>
+However, a search for just the events for model C1 gives the expected result: all of its events are listed in their proper time order. Specifically, the command 'grep C2 output', where 'output' is the file with the results of the simulation, yields the following:
+<PRE>
+C.C2 @ t = 3.5, memory= A, ta()= 1
+C.C2 @ t = 4.5, y(t)= A
+C.C2 @ t = 4.5, memory= C, ta()= 1
+C.C2 @ t = 5.5, y(t)= C
+C.C2 @ t = 5.5, memory= E, ta()= 1
+C.C2 @ t = 6.5, y(t)= E
+C.C2 @ t = 6.5, memory= G, ta()= 1
+C.C2 @ t = 7.5, y(t)= G
+C.C2 @ t = 7.5, memory= I, ta()= 1
+C.C2 @ t = 8.5, y(t)= I
+C.C2 @ t = 8.5, memory= G, ta()= 1
+C.C2 @ t = 9.5, y(t)= G
+C.C2 @ t = 9.5, memory= I, ta()= 1
+</PRE>
+So too for the output of model 'A_g', which is shown below:
+<PRE>
+A.A_g @ t = 0.5, y(t)= A
+A.A_g @ t = 0.5, running= 1, next output= B
+A.A_g @ t = 1, y(t)= B
+A.A_g @ t = 1, running= 1, next output= C
+A.A_g @ t = 1.5, y(t)= C
+A.A_g @ t = 1.5, running= 1, next output= D
+A.A_g @ t = 2, y(t)= D
+A.A_g @ t = 2, running= 1, next output= E
+A.A_g @ t = 2.5, y(t)= E
+A.A_g @ t = 2.5, running= 1, next output= F
+A.A_g @ t = 3, y(t)= F
+A.A_g @ t = 3, running= 1, next output= G
+A.A_g @ t = 3.5, y(t)= G
+A.A_g @ t = 3.5, running= 1, next output= H
+A.A_g @ t = 4, y(t)= H
+A.A_g @ t = 4, running= 1, next output= I
+A.A_g @ t = 4.5, y(t)= I
+A.A_g @ t = 4.5, running= 0, next output= I
+A.A_g @ t = 5.5, running= 0, next output= I
+A.A_g @ t = 6.5, running= 0, next output= I
+A.A_g @ t = 7.5, running= 0, next output= I
+A.A_g @ t = 8.5, running= 0, next output= I
+A.A_g @ t = 9.5, running= 0, next output= I
+</PRE>
+So the individual traces for these components appear in the proper order in the output, but they are intermingled in an arbitrary way. 
+
+<P>
+
+<H1><A NAME="SECTION001060000000000000000">
+Managing memory across thread boundaries</A>
+</H1>
+Because the atomic models in a simulator are executed at different rates, it often happens that an output object produced by a model in one thread will be used at some later time by models in another thread. To manage the memory associated with these output objects, it is necessary for the simulator to be able to determine when any such object can be safely deleted. This is done most easily when every thread has its own copy of the object, and the <B>MessageManager</B> interface is used by the simulator for this purpose.
+
+<P>
+If your input and output types are primitive objects (ints, chars, etc.) or simple structure, then the default approach to memory management is sufficient. Indeed, the default memory manager should be sufficient for any types of objects for which the compiler's default copy constructor and assignment operator produce deep copies. If you are passing pointers to complex objects or objects that use their own internal scheme for managing memory (e.g., that use copy on write semantics, reference counting, etc.), then you will need to build a custom memory manager. The <B>MessageManager</B> interface is used for this purpose, and your custom <B>MessageManager</B> is provided to the <B>ParSimulator</B> as the final argument to its constructor.
+
+<P>
+The <B>MessageManager</B> has two virtual methods that must be overridden by any derived class. The first is the <B><I>clone</I></B> method, which has the signature
+<PRE>
+X clone(X&amp; value)
+</PRE>
+where X is the type of object that your simulator uses for input and output. This method must create and return a deep copy of the value. The second method is <B><I>destroy</I></B>, and it has the signature
+<PRE>
+void destroy(X&amp; value)
+</PRE>
+where X is as before. This method must free the memory associated with the value. 
+
+<P>
+The implementation of the default memory manager is as follows:
+<PRE>
+template &lt;typename X&gt; class NullMessageManager:
+   public MessageManager&lt;X&gt;
+{
+   public:
+      /// Uses the objects default copy constructor
+      X clone(X&amp; value) { return value; }
+      /// Takes no action on the value
+      void destroy(X&amp; value){}
+};
+</PRE>
+To illustrate the construction of a new <B>MessageManager</B>, the implementation below is for a model that uses C style strings (i.e., null terminate arrays of characters) for input and output. The <B><I>clone</I></B> method allocates memory for a string and then copies to it the contents of the value. The <B><I>destroy</I></B> method frees the memory allocated for the string.
+<PRE>
+class CStringMessageManager:
+   public adevs::MessageManager&lt;char*&gt;
+{
+   public:
+      char* clone(char* &amp; value)
+      {
+         char* new_string = new char[strlen(value)];
+         strcpy(new_string,value);
+         return new_string;
+      }
+      void destroy(char* &amp; value)
+      {
+         delete [] value;
+      }
+};
+</PRE>
+If this message manager were supplied to the simulator in the example of the previous section, then the <B>ParSimulator</B> would be constructed as follows:
+<PRE>
+. . .
+CStringMessageManager* msg_mngr = new CStringMessageManager();
+ParSimulator&lt;char*&gt;* sim = new ParSimulator&lt;char*&gt;(model,lpg,msg_mngr);
+. . .
+</PRE>
+The simulator would then use the supplied message manager for handling input and output objects that exist simultaneously in the simulator's many threads.
+
+<P>
+
+<H1><A NAME="SECTION001070000000000000000">
+Notes on repeatability and performance</A>
+</H1>
+If your model and simulator have been setup properly then the outcomes produced by the parallel and sequential simulators will be identical. To this end, keep the following rules in mind:
+
+<OL>
+<LI>Models must not shared variables.
+</LI>
+<LI>The state transition functions of your models must not depend on the order of items in their input bag.
+</LI>
+<LI>Listeners must be thread safe.
+</LI>
+<LI>Listeners must not expect events to be reported in a global time order. Only the events associated with individual atomic models will be reported in their proper order. All other events will be interleaved in time.
+</LI>
+</OL>
+In general you should not expect to speedup relatively small simulations by use of the parallel simulator. Rather, its purpose is chiefly to enable your model to grow in its size, complexity, or both without a corresponding increase in execution time. With this in mind, to achieve good execution times requires the following.
+
+<OL>
+<LI>The size of the model must be sufficient to keep all of your processors busy all of the time with useful work. Moreover, the amount of useful work to be done by each processor must substantially exceed the overhead of parallel simulation algorithm.
+</LI>
+<LI>Your model must have parallelism that the parallel algorithm can exploit. In practice, this means that your model must be partitioned to both maximize the lookahead of the network assigned to each processor and to minimize the communication between processors.
+</LI>
+</OL>
+	<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html231"
+  HREF="node11.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html227"
+  HREF="manual.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html221"
+  HREF="node9.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html229"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html232"
+  HREF="node11.html">Models with Many Input/Output</A>
+<B> Up:</B> <A NAME="tex2html228"
+  HREF="manual.html">A Discrete EVent system</A>
+<B> Previous:</B> <A NAME="tex2html222"
+  HREF="node9.html">The Simulator Class</A>
+ &nbsp; <B>  <A NAME="tex2html230"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+<ADDRESS>
+rotten
+2014-02-19
+</ADDRESS>
+</BODY>
+</HTML>

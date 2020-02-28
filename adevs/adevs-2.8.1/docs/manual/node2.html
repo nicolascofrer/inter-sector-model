@@ -1,0 +1,109 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2012 (1.2)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>About this manual</TITLE>
+<META NAME="description" CONTENT="About this manual">
+<META NAME="keywords" CONTENT="manual">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="manual.css">
+
+<LINK REL="next" HREF="node3.html">
+<LINK REL="previous" HREF="node1.html">
+<LINK REL="up" HREF="manual.html">
+<LINK REL="next" HREF="node3.html">
+</HEAD>
+
+<BODY >
+<!--Navigation Panel-->
+<A NAME="tex2html123"
+  HREF="node3.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html119"
+  HREF="manual.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html113"
+  HREF="node1.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html121"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html124"
+  HREF="node3.html">Building and Installing</A>
+<B> Up:</B> <A NAME="tex2html120"
+  HREF="manual.html">A Discrete EVent system</A>
+<B> Previous:</B> <A NAME="tex2html114"
+  HREF="node1.html">Contents</A>
+ &nbsp; <B>  <A NAME="tex2html122"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00200000000000000000">
+About this manual</A>
+</H1>
+The purpose of this manual is to get you working with Adevs as quickly as possible. To that end, this manual documents the major features of the simulation engine with an emphasis on how they are used. The table of contents summarizes which aspects of the simulator are described here.
+
+<P>
+Among the features omitted from this manual are the Java language bindings for the Adevs simulator. Build instructions for the Java bindings are given in the ``Build and Install" section. How these bindings are used will (I hope) be obvious once you have perused the C++ interface: the interfaces for building models and running simulations with Java are essentially the same as with C++.
+
+<P>
+The Java bindings have three limitations. First, you pay a (usually unnoticeable) cost in execution time for the extra work that Adevs must to do manage memory associated with input and output objects and models that are orphaned during a change of structure. Second, the facilities for combined simulation of discrete event and continuous models are not implemented for Java. Third, this is not a `pure Java' simulation engine: it uses a great deal of native code to do its work (though this is invisible to the programmer).
+
+<P>
+There are at least two positive aspects of the Java bindings. The first is it omits the need for explicitly managing memory. The Java garbage collector (plus some extra work by the simulation engine) takes care of this for you. Second, you have access to the nice features and standard libraries of the Java programming language.
+
+<P>
+Other topics not included in this manual are theory (why the simulator is built as it is) and some experimental features of the simulation engine. Among the latter are support for simulating hybrid differential-algebraic systems and conservative, parallel simulation using multicore processors. If you are interested in any of these subjects, I offer the following (greatly abridged) list of books and articles:
+
+<OL>
+<LI>A. M. Uhrmacher. Dynamic structures in modeling and simulation: a reflective approach, ACM Transactions on Modeling and Computer Simulation, Vol. 11, No. 2 , pp. 206-232. April 2001. This paper describes the approach used by Adevs to model and simulate dynamic structure systems.
+</LI>
+<LI>Bernard P. Zeigler, Tag Gon Kim and Herbert Praehofer. Theory of Modeling and Simulation, Second Edition. Academic Press. 2000. This book develops the Discrete Event System Specification (DEVS) from its roots in abstract systems theory.
+</LI>
+<LI>James J. Nutaro. Building Software for Simulation: Theory and Algorithms, with Applications in C++. Wiley. 2010. This book presents the Discrete Event Systems Specification with code for the (slightly abridged) Adevs simulator and has several examples of its use. This book also describes the conservative, parallel simulator and discusses the construction of new ODE solvers and event finding modules for Adevs.
+</LI>
+</OL>
+Question and comments about this software can be sent to Jim Nutaro at nutarojj@ornl.gov. 
+	<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html123"
+  HREF="node3.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html119"
+  HREF="manual.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html113"
+  HREF="node1.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html121"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html124"
+  HREF="node3.html">Building and Installing</A>
+<B> Up:</B> <A NAME="tex2html120"
+  HREF="manual.html">A Discrete EVent system</A>
+<B> Previous:</B> <A NAME="tex2html114"
+  HREF="node1.html">Contents</A>
+ &nbsp; <B>  <A NAME="tex2html122"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+<ADDRESS>
+rotten
+2014-02-19
+</ADDRESS>
+</BODY>
+</HTML>

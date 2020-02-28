@@ -1,0 +1,133 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 2012 (1.2)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>The Simulator Class</TITLE>
+<META NAME="description" CONTENT="The Simulator Class">
+<META NAME="keywords" CONTENT="manual">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2012">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="manual.css">
+
+<LINK REL="next" HREF="node10.html">
+<LINK REL="previous" HREF="node8.html">
+<LINK REL="up" HREF="manual.html">
+<LINK REL="next" HREF="node10.html">
+</HEAD>
+
+<BODY >
+<!--Navigation Panel-->
+<A NAME="tex2html219"
+  HREF="node10.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html215"
+  HREF="manual.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html209"
+  HREF="node8.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html217"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html220"
+  HREF="node10.html">Simulation on multi-core computers</A>
+<B> Up:</B> <A NAME="tex2html216"
+  HREF="manual.html">A Discrete EVent system</A>
+<B> Previous:</B> <A NAME="tex2html210"
+  HREF="node8.html">Continuous Models</A>
+ &nbsp; <B>  <A NAME="tex2html218"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00900000000000000000">
+The Simulator Class</A>
+</H1>
+The <B>Simulator</B> class has four functions: to determining the model's time of next event, to extract output from the model, to inject input into the model, and to advance the simulation clock. The first function is implemented by the <B><I>nextEventTime</I></B> method with which we are already familiar. I'll address the other three functions in turn. 
+
+<P>
+There are two essential steps for extracting output from your model. The first step is to register an <B>EventListener</B> with the simulator. This is done by creating a subclass of the <B>EventListener</B> and then passing this object to the <B>Simulator</B>'s <B><I>addEventListener</I></B> method. When the <B>EventListener</B> is registered with the simulator, its <B><I>outputEvent</I></B> method intercepts output originating from <B>Atomic</B> and <B>Network</B> models.
+
+<P>
+The second step is to invoke the <B>Simulator</B>'s <B><I>computeNextOutput</I></B> method, which performs the output calculations and provides the results to registered <B>EventListener</B>s. The signature of <B><I>computeNextOutput</I></B> is
+<PRE>
+void computeNextOutput()
+</PRE>
+and it computes the model output at the time given by the <B><I>nextEventTime</I></B> method. The <B><I>computeNextOutput</I></B> method invokes the <B><I>output_func</I></B> method of every imminent <B>Atomic</B> model, maps outputs to inputs by calling the <B><I>route</I></B> method of <B>Network</B> models, and calls the <B><I>outputEvent</I></B> method of every <B>EventListener</B> registered with the <B>Simulator</B>. The <B><I>computeNextOutput</I></B> method anticipates the output of your model from its current state assuming that no input events will intervene between now and the time returned by <B><I>nextEventTime</I></B>.
+
+<P>
+The <B><I>computeNextState</I></B> method is used to inject events into a model and advance the simulation clock. The method signature is
+<PRE>
+void computeNextState(Bag&lt;Event&lt;X&gt; &gt;&amp; input, double t)
+</PRE>
+where the <B>Event</B> class is the same one that the <B>EventListener</B> accepts to its <B><I>outputEvent</I></B> method. The <B>Event</B> class has two fields: a pointer to a model of type <B>Devs<IMG
+ WIDTH="16" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img58.png"
+ ALT="$ &lt;$">
+X<IMG
+ WIDTH="16" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img59.png"
+ ALT="$ &gt;$">
+</B> (i.e., a <B>Network</B> or <B>Atomic</B> model) and a value of type X. 
+
+<P>
+The <B><I>computeNextState</I></B> method applies a bag of <B>Event</B> objects to the model at time t. If the input bag is empty and t is equal to the next event time, then this method has the same effect as <B><I>execNextEvent</I></B>: it calculates the output values at time t using the <B><I>computeNextOutput</I></B> method, computes the next state of all models undergoing internal and external events, computes structure changes, and advances the simulation clock.
+
+<P>
+If the input bag is not empty then the value of each <B>Event</B> is applied as an input to the model pointed to by that <B>Event</B>. If, in this case, t is equal to the next event time then the method also follows the usual steps of invoking the <B><I>computeNextOutput</I></B> method and calculating state and structure changes. However, if t is less than the <B>Simulator</B>'s next event time, then the procedure is nearly identical excepting that the <B><I>computeNextOutput</I></B> method is not invoked. In this case, the only input events for any model are those provided in the input bag.
+
+<P>
+The <B>Simulator</B>'s <B><I>execNextEvent</I></B> method does its job using <B><I>computeNextOutput</I></B> and <B><I>computeNextState</I></B>. The implementation of <B><I>execNextEvent</I></B> has only two lines; the <B>Bag</B> bogus_input is empty.
+<PRE>
+void execNextEvent() {
+    computeNextOutput();
+    computeNextState(bogus_input,nextEventTime());
+}
+</PRE>
+
+<P>
+The <B><I>computeNextOutput</I></B>, <B><I>computeNextState</I></B>, and <B><I>execNextEvent</I></B> methods throw an exception if a model violates either of two constraints: i) the time advance is negative and ii) the coupling constraints described in section <A HREF="node6.html#section:parts_of_a_network_model">5.1</A> and illustrated in Figure <A HREF="node6.html#fig:bad_coupling">5.4</A> are violated. The Adevs <B>exception</B> class is derived from the standard C++ <B>exception</B> class. Its method <B><I>what</I></B> returns a string that describes the exception condition and the method <B><I>who</I></B> returns a pointer to the model that caused the exception.
+
+<P>
+The Adevs <B>exception</B> class is intended to assist with debugging simulations. There isn't much you can do at run-time to fix a time advance method or reorganize a model's structure (or fix the structure change logic), but the simulator tries to identify problems before they become obscure and difficult to find bugs.
+	<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html219"
+  HREF="node10.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html215"
+  HREF="manual.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html209"
+  HREF="node8.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html217"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html220"
+  HREF="node10.html">Simulation on multi-core computers</A>
+<B> Up:</B> <A NAME="tex2html216"
+  HREF="manual.html">A Discrete EVent system</A>
+<B> Previous:</B> <A NAME="tex2html210"
+  HREF="node8.html">Continuous Models</A>
+ &nbsp; <B>  <A NAME="tex2html218"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+<ADDRESS>
+rotten
+2014-02-19
+</ADDRESS>
+</BODY>
+</HTML>
